@@ -172,10 +172,13 @@ async def on_message(message):
     if message.author.bot:
         return
 
-    has_image = any(
-        att.content_type and att.content_type.startswith("image/") 
-        for att in message.attachments
-    )
+# Kiểm tra cả content_type lẫn đuôi file ảnh (.png, .jpg, .jpeg, .webp, .gif)
+image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
+has_image = any(
+    (att.content_type and att.content_type.startswith("image/")) or
+    att.filename.lower().endswith(image_extensions)
+    for att in message.attachments
+)
 
     if has_image:
         if message.channel.id != QUEST_CHANNEL_ID:
