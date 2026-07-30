@@ -167,35 +167,110 @@ async def point(ctx, member: discord.Member = None):
     # Gửi qua Webhook
     await send_via_webhook(ctx, msg_content)
 
+# ==================== LỚP TẠO NÚT BẤM CHUYỂN TRANG ====================
+class LeaderboardView(discord.ui.View):
+    def __init__(self, data, author_id, per_page=10):
+        super().__init__(timeout=60) # Tự động khóa nút sau 60 giây không dùng
+        self.data = data
+        self.author_id = author_id
+        self.per_page = per_page
+        self.current_page = 1
+        self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
+        self.message = None
+        self.update_buttons()
+
+    def update_buttons(self):
+        # Vô hiệu hóa nút Trang trước nếu ở trang 1
+        self.children[0].disabled = (self.current_page == 1)
+        # Vô hiệu hóa nút Trang sau nếu ở trang cuối
+        self.children[1].disabled = (self.current_page == self.total_pages)
+
+    def create_embed(self):
+        embed = discord.Embed(
+            title="🏆 BẢNG XẾP HẠNG ĐIỂM SỨC MẠNH 🏆",
+            color=discord.Color.gold()
+        )
+        
+        start_idx = (self.current_page - 1) * self.per_page
+        end_idx = start_idx + self.per_page
+        page_data = self.data[start_idx:end_idx]
+        
+        description = ""
+        for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
+            points = info.get("points", 0)
+            streak = info.get("streak", 0)
+            
+            if index == 1:
+                medal = "🥇"
+            elif index == 2:
+                medal = "🥈"
+            elif index == 3:
+                medal = "🥉"
+            else:
+                medal = f"**#{index}**"
+                
+            description += f"{medal} <@{user_id}> - **{points}** điểm (Chuỗi: {streak}/3)\n"
+
+        embed.description = description
+        embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
+        return embed
+
+    @discord.ui.button(label="◀ Trang trước", style=discord.ButtonStyle.primary)
+    async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("❌ Chỉ người dùng lệnh mới có thể bấm chuyển trang!", ephemeral=True)
+        
+        self.current_page -= 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
+    @discord.ui.button(label="Trang sau ▶", style=discord.ButtonStyle.primary)
+    async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
+        if interaction.user.id != self.author_id:
+            return await interaction.response.send_message("❌ Chỉ người dùng lệnh mới có thể bấm chuyển trang!", ephemeral=True)
+        
+        self.current_page += 1
+        self.update_buttons()
+        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+
+    async def on_timeout(self):
+        # Khi hết 60s, vô hiệu hóa các nút bấm để tránh tốn tài nguyên
+        for child in self.children:
+            child.disabled = True
+        if self.message:
+            try:
+                await self.message.edit(view=self)
+            except Exception:
+                pass
+
+
+# ==================== LỆNH K.TOP MỚI ====================
 @bot.command(name="top")
-async def top(ctx):
+async def top(ctx, page: int = 1):
     data = load_data()
     if not data:
         await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
         return
 
+    # Sắp xếp danh sách theo điểm từ cao xuống thấp
     sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
     
-    embed = discord.Embed(
-        title="🏆 BẢNG XẾP HẠNG ĐIỂM SỨC MẠNH 🏆",
-        color=discord.Color.gold()
-    )
+    per_page = 10
+    total_pages = max(1, (len(sorted_users) + per_page - 1) // per_page)
     
-    description = ""
-    for index, (user_id, info) in enumerate(sorted_users[:10], start=1):
-        points = info.get("points", 0)
-        streak = info.get("streak", 0)
-        
-        if index == 1:
-            medal = "🥇"
-        elif index == 2:
-            medal = "🥈"
-        elif index == 3:
-            medal = "🥉"
-        else:
-            medal = f"**#{index}**"
-            
-        description += f"{medal} <@{user_id}> - **{points}** điểm (Chuỗi: {streak}/3)\n"
+    # Kiểm tra nếu người dùng gõ số trang vượt quá giới hạn
+    if page < 1 or page > total_pages:
+        await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
+        return
+
+    # Khởi tạo giao diện có nút bấm
+    view = LeaderboardView(sorted_users, ctx.author.id, per_page=per_page)
+    view.current_page = page
+    view.update_buttons()
+    
+    embed = view.create_embed()
+    message = await ctx.send(embed=embed, view=view)
+    view.message = message
 
     embed.description = description
     await ctx.send(embed=embed)
