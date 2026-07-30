@@ -179,9 +179,9 @@ async def on_message(message):
         bonus_points = 0
         
         if user_info["streak"] == 3:
-            bonus_points = 20
+            bonus_points = 15
             user_info["streak"] = 0
-            streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+20 Điểm Sức Mạnh** bonus!"
+            streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+15 Điểm Sức Mạnh** bonus!"
         else:
             streak_msg = f"\n🔥 Chuỗi hiện tại: **{user_info['streak']}/3** ngày."
 
