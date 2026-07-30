@@ -161,6 +161,13 @@ async def auto_lock_channel():
                 await channel.send(embed=embed)
                 
 # ==================== 5. SỰ KIỆN BOT ====================
+
+@bot.event
+async def on_ready():
+    print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
+    if not auto_lock_channel.is_running():
+        auto_lock_channel.start()
+
 @bot.event
 async def on_message(message):
     if message.author.bot:
@@ -250,12 +257,8 @@ async def on_message(message):
         )
 
         await message.channel.send(embed=embed)
-    
-async def on_ready():
-    print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
-    if not auto_lock_channel.is_running():
-        auto_lock_channel.start()
 
+    # Đặt ở ngoài cùng để xử lý tất cả lệnh bằng văn bản (k.help, k.pf, k.top,...)
     await bot.process_commands(message)
 
 # ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
