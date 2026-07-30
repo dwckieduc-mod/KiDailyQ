@@ -216,6 +216,23 @@ async def point(ctx, member: discord.Member = None):
     total_quests = user_info.get("total_quests", 0)
     last_date = user_info.get("last_date") or "Chưa điểm danh"
 
+    # ================= TÍNH THỨ HẠNG (RANK) =================
+    rank_str = "Chưa xếp hạng"
+    if data:
+        # Sắp xếp danh sách người chơi theo điểm từ cao xuống thấp
+        sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
+        for idx, (uid, info) in enumerate(sorted_users, start=1):
+            if uid == user_id:
+                if idx == 1:
+                    rank_str = "🥇 Top 1"
+                elif idx == 2:
+                    rank_str = "🥈 Top 2"
+                elif idx == 3:
+                    rank_str = "🥉 Top 3"
+                else:
+                    rank_str = f"#{idx} / {len(sorted_users)}"
+                break
+
     embed = discord.Embed(
         title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
         description=f"Bảng thống kê hoạt động của {target.mention}",
@@ -225,6 +242,11 @@ async def point(ctx, member: discord.Member = None):
     embed.set_thumbnail(url=target.display_avatar.url)
     embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
 
+    embed.add_field(
+        name="🏆 Thứ Hạng (Rank)", 
+        value=f"**{rank_str}**", 
+        inline=True
+    )
     embed.add_field(
         name="💪 Điểm Sức Mạnh", 
         value=f"**{points}** điểm", 
@@ -243,7 +265,7 @@ async def point(ctx, member: discord.Member = None):
     embed.add_field(
         name="📅 Lần Cuối Điểm Danh", 
         value=f"`{last_date}`", 
-        inline=False
+        inline=True
     )
 
     embed.set_footer(
