@@ -204,7 +204,7 @@ async def on_message(message):
         # EMBED THÔNG BÁO THÀNH CÔNG
         embed = discord.Embed(
             title="✅ ĐIỂM DANH THÀNH CÔNG!",
-            description=f"{message.author.mention} đã nộp ảnh bài tập/nhiệm vụ hôm nay!",
+            description=f"{message.author.mention} đã hoàn thành daily quest hôm nay!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -432,7 +432,6 @@ async def remove_diem_error(ctx, error):
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
     await ctx.send(embed=embed)
 
-
 @bot.command(name="addstreak")
 @commands.has_permissions(administrator=True)
 async def add_streak(ctx, member: discord.Member, amount: int):
@@ -441,6 +440,16 @@ async def add_streak(ctx, member: discord.Member, amount: int):
     user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
     
     user_info["streak"] = max(0, user_info.get("streak", 0) + amount)
+    
+    # TỰ ĐỘNG CẶP NHẬT LAST_DATE VỀ NGÀY HÔM QUA ĐỂ TEST / NỐI CHUỖI DỄ DÀNG
+    vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
+    today = vietnam_now.date()
+    yesterday = today - timedelta(days=1)
+    
+    # Nếu hôm nay chưa điểm danh thì set last_date là ngày hôm qua
+    if user_info.get("last_date") != str(today):
+        user_info["last_date"] = str(yesterday)
+
     data[user_id] = user_info
     save_data(data)
     
@@ -452,7 +461,7 @@ async def add_streak(ctx, member: discord.Member, amount: int):
     embed.add_field(name="🔥 Chuỗi Streak Hiện Tại", value=f"**{get_streak_text(user_info['streak'])}**")
     embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
     await ctx.send(embed=embed)
-
+    
 @add_streak.error
 async def add_streak_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
@@ -462,7 +471,6 @@ async def add_streak_error(ctx, error):
     else:
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
     await ctx.send(embed=embed)
-
 
 @bot.command(name="removestreak")
 @commands.has_permissions(administrator=True)
