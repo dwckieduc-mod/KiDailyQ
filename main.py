@@ -397,7 +397,7 @@ async def remove_diem(ctx, member: discord.Member, amount: int):
     embed = discord.Embed(
         title="🔻 TRỪ ĐIỂM SỨC MẠNH",
         description=f"Đã trừ **-{amount} điểm** của {member.mention}!",
-        color=discord.Color.orange()
+        color=discord.Color.red()
     )
     embed.add_field(name="💰 Tổng Điểm Còn Lại", value=f"**{user_info['points']}** điểm")
     embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
@@ -436,7 +436,7 @@ async def refund_user(ctx, member: discord.Member):
     if not user_info or user_info.get("total_quests", 0) == 0 or not user_info.get("last_date"):
         embed = discord.Embed(
             title="⚠️ KHÔNG THỂ HOÀN TRẢ",
-            description=f"Thành viên {member.mention} **chưa từng gửi bất kỳ ảnh bài tập/nhiệm vụ nào**, không thể thực hiện refund!",
+            description=f"Thành viên {member.mention} **chưa từng làm nhiệm vụ nào**, không thể thực hiện refund!",
             color=discord.Color.gold()
         )
         embed.set_footer(text=f"Yêu cầu bởi Admin: {ctx.author.display_name}")
