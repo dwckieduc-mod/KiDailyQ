@@ -379,14 +379,14 @@ async def help_command(ctx):
     embed.add_field(
         name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
         value=(
-            "• `unlock`: Mở kênh điểm danh.\n"
-            "• `lock`: Khóa kênh điểm danh.\n"
             "• `add` `[@User]` `<số KiPoints>`: Cộng KiPoints.\n"
             "• `remove` / `rm` `[@User]` `<số KiPoints>`: Trừ KiPoints.\n"
             "• `addstreak` / `adds` `[@User]` `<số ngày>`: Cộng chuỗi streak.\n"
             "• `removestreak` / `rms` `[@User]` `<số ngày>`: Trừ chuỗi streak.\n"
             "• `reset` / `rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-            "• `refund` / `rf` `[@User]`: Hủy kết quả và làm lại"
+            "• `refund` / `rf` `[@User]`: Hủy kết quả và làm lại.\n"
+            "• `unlock`: Mở kênh.\n"
+            "• `lock`: Khóa kênh."
         ),
         inline=False
     )
@@ -415,8 +415,8 @@ async def unlock_channel(ctx):
         await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
         
         embed = discord.Embed(
-            title="🔓 KÊNH ĐÃ MỞ NỘP BÀI",
-            description="☀️ **Kênh điểm danh nhiệm vụ đã được mở!**\nHãy gửi 1 tấm ảnh bài tập để nhận KiPoints ngay hôm nay.",
+            title="🔓 ĐÃ MỞ KHOÁ KÊNH",
+            description="☀️ **Kênh đã được mở!**\nHãy làm nhiệm vụ để nhận KiPoints ngay hôm nay.",
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
@@ -447,8 +447,8 @@ async def lock_channel(ctx):
         await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
         
         embed = discord.Embed(
-            title="🔒 KHÓA KÊNH THỦ CÔNG",
-            description=f"Quản lý {ctx.author.mention} đã khóa kênh nộp bài.",
+            title="🔒 ĐÃ KHOÁ KÊNH",
+            description=f"Quản lý {ctx.author.mention} đã khóa kênh.\nHãy đợi tới khi có quest mới",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
