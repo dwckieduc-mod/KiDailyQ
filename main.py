@@ -336,9 +336,9 @@ async def help_command(ctx):
     embed.add_field(
         name="👤 Lệnh Cho Thành Viên",
         value=(
-            "• `k.pt` / `k.point` / `k.profile` `[@User]`: Xem hồ sơ điểm danh & KiPoints cá nhân.\n"
+            "• `k.profile` / `k.pf` / `[@User]`: Xem hồ sơ điểm danh & KiPoints cá nhân.\n"
             "• `k.top [số trang]`: Bảng xếp hạng thành viên.\n"
-            "• `k.help`: Hiển thị bảng hướng dẫn này."
+            "• `k.help`: Danh sách các lệnh."
         ),
         inline=False
     )
@@ -346,12 +346,12 @@ async def help_command(ctx):
     embed.add_field(
         name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
         value=(
-            "• `k.add @User <số KiPoints>`: Cộng thêm KiPoints.\n"
+            "• `k.add @User <số KiPoints>`: Cộng KiPoints.\n"
             "• `k.remove @User <số KiPoints>`: Trừ KiPoints.\n"
-            "• `k.addstreak @User <số ngày>`: Cộng thêm chuỗi streak.\n"
+            "• `k.addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
             "• `k.removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
-            "• `k.reset @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-            "• `k.refund @User`: Trả lại lượt điểm danh & trừ KiPoints tự động."
+            "• `k.reset` / `k.rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
+            "• `k.refund` / `k.rf` `[@User]`: Hủy kết quả để làm lại"
         ),
         inline=False
     )
