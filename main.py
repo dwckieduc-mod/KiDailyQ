@@ -349,10 +349,10 @@ async def help_command(ctx):
     embed.add_field(
         name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
         value=(
-            "• `add` `[@User]` <số KiPoints>`: Cộng KiPoints.\n"
+            "• `add` `[@User]` `<số KiPoints>`: Cộng KiPoints.\n"
             "• `remove` / `rm` `[@User]` `<số KiPoints>`: Trừ KiPoints.\n"
             "• `addstreak` / `adds` `[@User]` `<số ngày>`: Cộng chuỗi streak.\n"
-            "• `removestreak` / `rms` `[@User]` <số ngày>`: Trừ chuỗi streak.\n"
+            "• `removestreak` / `rms` `[@User]` `<số ngày>`: Trừ chuỗi streak.\n"
             "• `reset` / `rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
             "• `refund` / `rf` `[@User]`: Hủy kết quả và làm lại"
         ),
