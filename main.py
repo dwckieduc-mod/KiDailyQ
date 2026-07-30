@@ -342,7 +342,7 @@ async def help_command(ctx):
         value=(
             "• `k.add @User <số điểm>`: Cộng thêm điểm cho thành viên.\n"
             "• `k.remove @User <số điểm>`: Trừ điểm của thành viên.\n"
-            "• `k.reset @User`: Đặt lại toàn bộ điểm và streak của thành viên về 0."
+            "• `k.reset @User`: Đặt lại toàn bộ điểm và streak của thành viên về 0.\n"
             "• `k.refund @User`: Trả lại lượt điểm danh & trừ điểm tự động.\n"
         ),
         inline=False
@@ -423,7 +423,7 @@ async def reset_user(ctx, member: discord.Member):
             color=discord.Color.gold()
         )
     await ctx.send(embed=embed)
-@bot.command(name="refund", aliases=["traanh", "huydiemdanh"])
+@bot.command(name="refund", aliases=["rf"])
 @commands.has_permissions(administrator=True)
 async def refund_user(ctx, member: discord.Member):
     user_id = str(member.id)
