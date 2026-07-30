@@ -406,7 +406,7 @@ async def help_command(ctx):
 
 # ==================== 7. LỆNH DÀNH CHO ADMIN ====================
 @bot.command(name="unlock")
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(manage_channels=True)
 async def unlock_channel(ctx):
     try:
         channel = bot.get_channel(QUEST_CHANNEL_ID) or ctx.channel
@@ -416,24 +416,29 @@ async def unlock_channel(ctx):
         
         embed = discord.Embed(
             title="🔓 KÊNH ĐÃ MỞ NỘP BÀI",
-            description="☀️ **Kênh điểm danh nhiệm vụ đã được Admin mở!**\nHãy gửi 1 tấm ảnh bài tập để nhận KiPoints ngay hôm nay.",
+            description="☀️ **Kênh điểm danh nhiệm vụ đã được mở!**\nHãy gửi 1 tấm ảnh bài tập để nhận KiPoints ngay hôm nay.",
             color=discord.Color.green()
         )
         await ctx.send(embed=embed)
     except Exception as e:
-        await ctx.send(f"❌ **Lỗi Discord:** `{e}`\n*(Hãy kiểm tra lại quyền Manage Channels của Bot!)*")
+        await ctx.send(f"❌ **Lỗi Discord:** `{e}`\n*(Hãy kiểm tra lại xem Role của Bot đã nằm trên Role thường chưa!)*")
 
 @unlock_channel.error
 async def unlock_channel_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        embed = discord.Embed(
+            title="❌ KHÔNG CÓ QUYỀN", 
+            description="Bạn cần quyền **Manage Channels (Quản lý kênh)** để dùng lệnh này!", 
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
     else:
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
-    await ctx.send(embed=embed)
+        await ctx.send(embed=embed)
 
 
 @bot.command(name="lock")
-@commands.has_permissions(administrator=True)
+@commands.has_permissions(manage_channels=True)
 async def lock_channel(ctx):
     try:
         channel = bot.get_channel(QUEST_CHANNEL_ID) or ctx.channel
@@ -443,21 +448,26 @@ async def lock_channel(ctx):
         
         embed = discord.Embed(
             title="🔒 KHÓA KÊNH THỦ CÔNG",
-            description=f"Admin {ctx.author.mention} đã khóa kênh nộp bài.",
+            description=f"Quản lý {ctx.author.mention} đã khóa kênh nộp bài.",
             color=discord.Color.red()
         )
         await ctx.send(embed=embed)
     except Exception as e:
-        await ctx.send(f"❌ **Lỗi Discord:** `{e}`\n*(Hãy kiểm tra lại quyền Manage Channels của Bot!)*")
+        await ctx.send(f"❌ **Lỗi Discord:** `{e}`\n*(Hãy kiểm tra lại xem Role của Bot đã nằm trên Role thường chưa!)*")
 
 @lock_channel.error
 async def lock_channel_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        embed = discord.Embed(
+            title="❌ KHÔNG CÓ QUYỀN", 
+            description="Bạn cần quyền **Manage Channels (Quản lý kênh)** để dùng lệnh này!", 
+            color=discord.Color.red()
+        )
+        await ctx.send(embed=embed)
     else:
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
-    await ctx.send(embed=embed)
-
+        await ctx.send(embed=embed)
+        
 @bot.command(name="add")
 @commands.has_permissions(administrator=True)
 async def add_diem(ctx, member: discord.Member, amount: int):
