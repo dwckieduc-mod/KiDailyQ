@@ -424,7 +424,7 @@ async def reset_user(ctx, member: discord.Member):
         )
     await ctx.send(embed=embed)
 
-@bot.command(name="refund", aliases=["traanh", "huydiemdanh"])
+@bot.command(name="refund", aliases=["rf"])
 @commands.has_permissions(administrator=True)
 async def refund_user(ctx, member: discord.Member):
     user_id = str(member.id)
