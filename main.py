@@ -67,7 +67,7 @@ async def send_via_webhook(ctx, content: str):
         
         await webhook.send(
             content=content,
-            username="Hệ Thống Kiểm Tra Điểm",
+            username="Kikon Nổi Loạn",
             avatar_url=avatar_url,
             allowed_mentions=discord.AllowedMentions(users=False) # Không bắn thông báo ping
         )
