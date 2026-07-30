@@ -244,8 +244,7 @@ if __name__ == "__main__":
         print("❌ LỖI: Chưa cài đặt biến môi trường 'BOT_TOKEN' trên Render!")
     intents=intents, 
     case_insensitive=True
-)
-
+    
 DATA_FILE = "user_data.json"
 
 def load_data():
