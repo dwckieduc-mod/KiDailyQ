@@ -176,11 +176,11 @@ async def on_message(message):
         else:
             user_info["streak"] = 1
 
-        base_points = 1
+        base_points = 100
         bonus_points = 0
         
         if user_info["streak"] == 3:
-            bonus_points = 3
+            bonus_points = 70
             user_info["streak"] = 0
             is_bonus = True
         else:
