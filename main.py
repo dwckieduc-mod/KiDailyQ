@@ -143,7 +143,6 @@ async def on_message(message):
 # ==================== 5. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
 @bot.command(name="point", aliases=["pt"])
-@bot.command(name="point", aliases=["pt"])
 async def point(ctx, member: discord.Member = None):
     target = member or ctx.author
     user_id = str(target.id)
