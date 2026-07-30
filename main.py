@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 import json
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from flask import Flask
 from threading import Thread
 
@@ -14,7 +14,6 @@ def home():
     return "Bot Discord đang chạy 24/7 trên Render!"
 
 def run_web():
-    # Render sẽ tự cấp cổng PORT ngẫu nhiên qua biến môi trường
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
@@ -24,16 +23,281 @@ def keep_alive():
 
 # ==================== 2. CẤU HÌNH BOT & MÔI TRƯỜNG ====================
 
-# ID Kênh nộp ảnh điểm danh
 QUEST_CHANNEL_ID = 1531955248481177731
 
-# Lấy Token an toàn từ Environment Variables của Render
+# Lấy Token an toàn từ Environment Variables trên Render
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# Tệp lưu trữ dữ liệu điểm
 DATA_FILE = "user_data.json"
 
-# Thiết lập Intents cho Discord
+intents = discord.Intents.default()
+intents.message_content = True
+
+# help_command=None để tắt lệnh help mặc định của discord.py
+bot = commands.Bot(
+    command_prefix=["k.", "K."], 
+    intents=intents, 
+    case_insensitive=True,
+    help_command=None 
+)
+
+# ==================== 3. HÀM QUẢN LÝ DỮ LIỆU JSON ====================
+
+def load_data():
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_data(data):
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=4)
+
+# ==================== 4. HÀM HỖ TRỢ GỬI WEBHOOK ====================
+
+async def send_via_webhook(ctx, content: str):
+    """Gửi tin nhắn thông qua Webhook. Nếu thiếu quyền sẽ tự gửi tin thường."""
+    try:
+        # Tạo Webhook tạm thời
+        webhook = await ctx.channel.create_webhook(name="Point System Webhook")
+        avatar_url = bot.user.display_avatar.url if bot.user else None
+        
+        await webhook.send(
+            content=content,
+            username="Hệ Thống Kiểm Tra Điểm",
+            avatar_url=avatar_url,
+            allowed_mentions=discord.AllowedMentions(users=False) # Không bắn thông báo ping
+        )
+        # Sửa xong xóa webhook tạm đi cho sạch channel
+        await webhook.delete()
+    except Exception:
+        # Trường hợp Bot thiếu quyền "Manage Webhooks" trong Server -> Fallback về gửi thường
+        await ctx.send(
+            content, 
+            allowed_mentions=discord.AllowedMentions(users=False)
+        )
+
+# ==================== 5. SỰ KIỆN BOT ====================
+
+@bot.event
+async def on_ready():
+    print(f"✅ Bot đã kết nối thành công với tên: {bot.user.name}")
+
+@bot.event
+async def on_message(message):
+    if message.author.bot:
+        return
+
+    # Kiểm tra tin nhắn có chứa ảnh hay không
+    has_image = any(
+        att.content_type and att.content_type.startswith("image/") 
+        for att in message.attachments
+    )
+
+    if has_image:
+        if message.channel.id != QUEST_CHANNEL_ID:
+            await bot.process_commands(message)
+            return
+
+        user_id = str(message.author.id)
+        
+        # Múi giờ Việt Nam (UTC+7)
+        vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
+        today = vietnam_now.date()
+        
+        data = load_data()
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0})
+        
+        last_date_str = user_info.get("last_date", "")
+        
+        if last_date_str:
+            last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+            
+            if last_date == today:
+                await message.channel.send(f"⚠️ {message.author.mention}, bạn đã điểm danh ngày hôm nay rồi!")
+                await bot.process_commands(message)
+                return
+            elif last_date == today - timedelta(days=1):
+                user_info["streak"] += 1
+            else:
+                user_info["streak"] = 1
+        else:
+            user_info["streak"] = 1
+
+        base_points = 10
+        bonus_points = 0
+        
+        # Reset Streak sau 3 ngày & thưởng điểm
+        if user_info["streak"] == 3:
+            bonus_points = 20
+            user_info["streak"] = 0
+            streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+20 Điểm Sức Mạnh** bonus!"
+        else:
+            streak_msg = f"\n🔥 Chuỗi hiện tại: **{user_info['streak']}/3** ngày."
+
+        total_gained = base_points + bonus_points
+        user_info["points"] += total_gained
+        user_info["last_date"] = str(today)
+        
+        data[user_id] = user_info
+        save_data(data)
+
+        await message.channel.send(
+            f"✅ {message.author.mention} Đã nộp ảnh điểm danh hôm nay thành công!\n"
+            f"💪 **+{total_gained} Điểm Sức Mạnh** (Tổng: **{user_info['points']}** điểm)."
+            f"{streak_msg}"
+        )
+
+    await bot.process_commands(message)
+
+# ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
+
+@bot.command(name="point", aliases=["pt"])
+async def point(ctx, member: discord.Member = None):
+    target = member or ctx.author
+    user_id = str(target.id)
+    data = load_data()
+    user_info = data.get(user_id, {"points": 0, "streak": 0})
+    
+    msg_content = f"📊 {target.mention} đang có **{user_info.get('points', 0)} Điểm Sức Mạnh** (Chuỗi: {user_info.get('streak', 0)}/3 ngày)."
+    
+    # Gửi qua Webhook
+    await send_via_webhook(ctx, msg_content)
+
+@bot.command(name="top")
+async def top(ctx):
+    data = load_data()
+    if not data:
+        await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
+        return
+
+    sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
+    
+    embed = discord.Embed(
+        title="🏆 BẢNG XẾP HẠNG ĐIỂM SỨC MẠNH 🏆",
+        color=discord.Color.gold()
+    )
+    
+    description = ""
+    for index, (user_id, info) in enumerate(sorted_users[:10], start=1):
+        points = info.get("points", 0)
+        streak = info.get("streak", 0)
+        
+        if index == 1:
+            medal = "🥇"
+        elif index == 2:
+            medal = "🥈"
+        elif index == 3:
+            medal = "🥉"
+        else:
+            medal = f"**#{index}**"
+            
+        description += f"{medal} <@{user_id}> - **{points}** điểm (Chuỗi: {streak}/3)\n"
+
+    embed.description = description
+    await ctx.send(embed=embed)
+
+@bot.command(name="help")
+async def help_command(ctx):
+    embed = discord.Embed(
+        title="📜 DANH SÁCH LỆNH BOT DIỂM DANH",
+        description="Tiền tố của bot là: `k.` hoặc `K.`",
+        color=discord.Color.blue()
+    )
+    
+    embed.add_field(
+        name="👤 Lệnh Cho Thành Viên",
+        value=(
+            "• `k.point` (hoặc `k.pt`) `[@User]`: Xem số điểm và chuỗi streak hiện tại (Gửi qua Webhook).\n"
+            "• `k.top`: Bảng xếp hạng Top 10 người có điểm cao nhất.\n"
+            "• `k.help`: Hiển thị bảng hướng dẫn này."
+        ),
+        inline=False
+    )
+    
+    embed.add_field(
+        name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
+        value=(
+            "• `k.add @User <số điểm>`: Cộng thêm điểm cho thành viên.\n"
+            "• `k.remove @User <số điểm>`: Trừ điểm của thành viên.\n"
+            "• `k.reset @User`: Đặt lại toàn bộ điểm và streak của thành viên về 0."
+        ),
+        inline=False
+    )
+
+    embed.add_field(
+        name="💡 Quy Tắc Điểm Danh",
+        value=(
+            "• Gửi **1 tấm ảnh** vào kênh nhiệm vụ để điểm danh mỗi ngày.\n"
+            "• Mỗi ngày điểm danh nhận **+10 Điểm Sức Mạnh**.\n"
+            "• Duy trì đủ **3 ngày liên tiếp** nhận thưởng thêm **+20 điểm bonus** và reset chuỗi mới."
+        ),
+        inline=False
+    )
+    
+    embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+    await ctx.send(embed=embed)
+
+# ==================== 7. LỆNH DÀNH CHO ADMIN ====================
+
+@bot.command(name="add")
+@commands.has_permissions(administrator=True)
+async def add_diem(ctx, member: discord.Member, amount: int):
+    user_id = str(member.id)
+    data = load_data()
+    user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0})
+    
+    user_info["points"] += amount
+    data[user_id] = user_info
+    save_data(data)
+    
+    await ctx.send(f"✅ Đã **cộng {amount} điểm** cho {member.mention}. Tổng điểm mới: **{user_info['points']}** điểm.")
+
+@bot.command(name="remove")
+@commands.has_permissions(administrator=True)
+async def remove_diem(ctx, member: discord.Member, amount: int):
+    user_id = str(member.id)
+    data = load_data()
+    user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0})
+    
+    user_info["points"] = max(0, user_info["points"] - amount)
+    data[user_id] = user_info
+    save_data(data)
+    
+    await ctx.send(f"🔻 Đã **trừ {amount} điểm** của {member.mention}. Tổng điểm còn lại: **{user_info['points']}** điểm.")
+
+@bot.command(name="reset")
+@commands.has_permissions(administrator=True)
+async def reset_user(ctx, member: discord.Member):
+    user_id = str(member.id)
+    data = load_data()
+    if user_id in data:
+        del data[user_id]
+        save_data(data)
+        await ctx.send(f"🔄 Đã đặt lại (reset) toàn bộ dữ liệu của {member.mention}.")
+    else:
+        await ctx.send(f"⚠️ {member.mention} chưa có dữ liệu điểm danh.")
+
+@add_diem.error
+@remove_diem.error
+@reset_user.error
+async def admin_command_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        await ctx.send("❌ Bạn cần có quyền **Administrator** để dùng lệnh này!")
+    elif isinstance(error, commands.MissingRequiredArgument):
+        await ctx.send("⚠️ Sai cú pháp!\n👉 Ví dụ: `k.add @User 50` hoặc `k.remove @User 20` hoặc `k.reset @User` ")
+
+# ==================== 8. KHỞI CHẠY BOT ====================
+
+if __name__ == "__main__":
+    keep_alive()
+    if BOT_TOKEN:
+        bot.run(BOT_TOKEN)
+    else:
+        print("❌ LỖI: Chưa cài đặt biến môi trường 'BOT_TOKEN' trên Render!")
 intents = discord.Intents.default()
 intents.message_content = True
 
