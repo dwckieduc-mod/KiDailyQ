@@ -179,7 +179,7 @@ async def on_message(message):
         bonus_points = 0
         
         if user_info["streak"] == 3:
-            bonus_points = 15
+            bonus_points = 5
             user_info["streak"] = 0
             streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+15 Điểm Sức Mạnh** bonus!"
         else:
@@ -332,7 +332,7 @@ async def help_command(ctx):
         value=(
             "• Gửi **1 tấm ảnh** vào kênh nhiệm vụ để điểm danh mỗi ngày.\n"
             "• Mỗi ngày điểm danh nhận **+10 Điểm Sức Mạnh**.\n"
-            "• Duy trì đủ **3 ngày liên tiếp** nhận thưởng thêm **+20 điểm bonus** và reset chuỗi mới."
+            "• Duy trì đủ **3 ngày liên tiếp** nhận thưởng thêm **+5 điểm bonus** và reset chuỗi mới."
         ),
         inline=False
     )
