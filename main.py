@@ -24,8 +24,7 @@ def keep_alive():
 # ==================== CẤU HÌNH BOT ====================
 
 QUEST_CHANNEL_ID = 1531955248481177731
-# Thay vì dán trực tiếp Token vào đây, ta đọc Token từ biến môi trường:
-BOT_TOKEN = os.environ.get("MTUzMjAzOTcwNTQ5MzkwMTYyOQ.GkRfjP.B9XZ86QZCc9g4EKQOmZhiGmbXryHB94h8DjcyYj")
+BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 
 # ======================================================
