@@ -133,10 +133,6 @@ class LeaderboardView(discord.ui.View):
 # ==================== 5. SỰ KIỆN BOT ====================
 
 @bot.event
-async def on_ready():
-    print(f"✅ Bot đã kết nối thành công với tên: {bot.user.name}")
-
-@bot.event
 async def on_message(message):
     if message.author.bot:
         return
@@ -165,7 +161,12 @@ async def on_message(message):
             last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
             
             if last_date == today:
-                await message.channel.send(f"⚠️ {message.author.mention}, bạn đã điểm danh ngày hôm nay rồi!")
+                embed = discord.Embed(
+                    title="⚠️ ĐÃ ĐIỂM DANH HÔM NAY",
+                    description=f"{message.author.mention}, bạn đã nộp ảnh điểm danh ngày hôm nay rồi!",
+                    color=discord.Color.gold()
+                )
+                await message.channel.send(embed=embed)
                 await bot.process_commands(message)
                 return
             elif last_date == today - timedelta(days=1):
@@ -179,11 +180,11 @@ async def on_message(message):
         bonus_points = 0
         
         if user_info["streak"] == 3:
-            bonus_points = 5
+            bonus_points = 20
             user_info["streak"] = 0
-            streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+15 Điểm Sức Mạnh** bonus!"
+            is_bonus = True
         else:
-            streak_msg = f"\n🔥 Chuỗi hiện tại: **{user_info['streak']}/3** ngày."
+            is_bonus = False
 
         total_gained = base_points + bonus_points
         user_info["points"] += total_gained
@@ -193,11 +194,30 @@ async def on_message(message):
         data[user_id] = user_info
         save_data(data)
 
-        await message.channel.send(
-            f"✅ {message.author.mention} Đã nộp ảnh điểm danh hôm nay thành công!\n"
-            f"💪 **+{total_gained} Điểm Sức Mạnh** (Tổng: **{user_info['points']}** điểm)."
-            f"{streak_msg}"
+        # EMBED THÔNG BÁO THÀNH CÔNG
+        embed = discord.Embed(
+            title="✅ ĐIỂM DANH THÀNH CÔNG!",
+            description=f"{message.author.mention} đã nộp ảnh bài tập/nhiệm vụ hôm nay!",
+            color=discord.Color.green()
         )
+        embed.set_thumbnail(url=message.author.display_avatar.url)
+        embed.add_field(name="💪 Điểm Nhận Được", value=f"**+{total_gained}** điểm", inline=True)
+        embed.add_field(name="💰 Tổng Điểm Hiện Có", value=f"**{user_info['points']}** điểm", inline=True)
+        
+        if is_bonus:
+            embed.add_field(
+                name="🎉 THƯỞNG CHUỖI 3 NGÀY!", 
+                value="Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+20 Điểm Bonus**!", 
+                inline=False
+            )
+        else:
+            embed.add_field(
+                name="🔥 Chuỗi Streak", 
+                value=f"**{user_info['streak']}/3** ngày", 
+                inline=False
+            )
+
+        await message.channel.send(embed=embed)
 
     await bot.process_commands(message)
 
@@ -340,7 +360,7 @@ async def help_command(ctx):
     embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
     await ctx.send(embed=embed)
 
-# ==================== 7. LỆNH DÀNH CHO ADMIN ====================
+# ==================== 7. LỆNH DÀNH CHO ADMIN (EMBED) ====================
 
 @bot.command(name="add")
 @commands.has_permissions(administrator=True)
@@ -353,7 +373,14 @@ async def add_diem(ctx, member: discord.Member, amount: int):
     data[user_id] = user_info
     save_data(data)
     
-    await ctx.send(f"✅ Đã **cộng {amount} điểm** cho {member.mention}. Tổng điểm mới: **{user_info['points']}** điểm.")
+    embed = discord.Embed(
+        title="🔺 CỘNG ĐIỂM SỨC MẠNH",
+        description=f"Đã cộng **+{amount} điểm** cho {member.mention}!",
+        color=discord.Color.green()
+    )
+    embed.add_field(name="💰 Tổng Điểm Mới", value=f"**{user_info['points']}** điểm")
+    embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+    await ctx.send(embed=embed)
 
 @bot.command(name="remove")
 @commands.has_permissions(administrator=True)
@@ -366,7 +393,14 @@ async def remove_diem(ctx, member: discord.Member, amount: int):
     data[user_id] = user_info
     save_data(data)
     
-    await ctx.send(f"🔻 Đã **trừ {amount} điểm** của {member.mention}. Tổng điểm còn lại: **{user_info['points']}** điểm.")
+    embed = discord.Embed(
+        title="🔻 TRỪ ĐIỂM SỨC MẠNH",
+        description=f"Đã trừ **-{amount} điểm** của {member.mention}!",
+        color=discord.Color.orange()
+    )
+    embed.add_field(name="💰 Tổng Điểm Còn Lại", value=f"**{user_info['points']}** điểm")
+    embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+    await ctx.send(embed=embed)
 
 @bot.command(name="reset")
 @commands.has_permissions(administrator=True)
@@ -376,19 +410,46 @@ async def reset_user(ctx, member: discord.Member):
     if user_id in data:
         del data[user_id]
         save_data(data)
-        await ctx.send(f"🔄 Đã đặt lại (reset) toàn bộ dữ liệu của {member.mention}.")
+        embed = discord.Embed(
+            title="🔄 RESET DỮ LIỆU THÀNH CÔNG",
+            description=f"Toàn bộ dữ liệu điểm & stats của {member.mention} đã được đưa về 0.",
+            color=discord.Color.red()
+        )
     else:
-        await ctx.send(f"⚠️ {member.mention} chưa có dữ liệu điểm danh.")
+        embed = discord.Embed(
+            title="⚠️ KHÔNG TÌM THẤY DỮ LIỆU",
+            description=f"{member.mention} chưa có dữ liệu điểm danh trong hệ thống.",
+            color=discord.Color.gold()
+        )
+    await ctx.send(embed=embed)
 
 @add_diem.error
 @remove_diem.error
 @reset_user.error
 async def admin_command_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
-        await ctx.send("❌ Bạn cần có quyền **Administrator** để dùng lệnh này!")
+        embed = discord.Embed(
+            title="❌ KHÔNG CÓ QUYỀN",
+            description="Bạn cần có quyền **Administrator** để sử dụng lệnh này!",
+            color=discord.Color.red()
+        )
     elif isinstance(error, commands.MissingRequiredArgument):
-        await ctx.send("⚠️ Sai cú pháp!\n👉 Ví dụ: `k.add @User 50` hoặc `k.remove @User 20` hoặc `k.reset @User` ")
-
+        embed = discord.Embed(
+            title="⚠️ SAI CÚ PHÁP LỆNH ADMIN",
+            description="Vui lòng nhập đúng cú pháp:\n\n"
+                        "• `k.add @User <số_điểm>`\n"
+                        "• `k.remove @User <số_điểm>`\n"
+                        "• `k.reset @User`",
+            color=discord.Color.gold()
+        )
+    else:
+        embed = discord.Embed(
+            title="❌ LỖI KHÔNG XÁC ĐỊNH",
+            description=f"`{error}`",
+            color=discord.Color.red()
+        )
+    await ctx.send(embed=embed)
+    
 # ==================== 8. KHỞI CHẠY BOT ====================
 
 if __name__ == "__main__":
