@@ -423,7 +423,8 @@ async def reset_user(ctx, member: discord.Member):
             color=discord.Color.gold()
         )
     await ctx.send(embed=embed)
-@bot.command(name="refund", aliases=["rf"])
+
+@bot.command(name="refund", aliases=["traanh", "huydiemdanh"])
 @commands.has_permissions(administrator=True)
 async def refund_user(ctx, member: discord.Member):
     user_id = str(member.id)
@@ -446,22 +447,25 @@ async def refund_user(ctx, member: discord.Member):
     yesterday = today - timedelta(days=1)
 
     current_streak = user_info.get("streak", 0)
+    total_quests = user_info.get("total_quests", 0)
     
-    # TỰ ĐỘNG KIỂM TRA ĐIỀU KIỆN STREAK & BONUS
-    if current_streak == 0:
-        # streak = 0 nghĩa là vừa nhận thưởng chuỗi 3 ngày hôm nay -> Trừ 10đ gốc + 5đ bonus
+    # KIỂM TRA CHÍNH XÁC: Chỉ tính Bonus Streak khi tổng quest >= 3 và chia hết cho 3
+    is_streak_bonus_day = (current_streak == 0) and (total_quests >= 3) and (total_quests % 3 == 0)
+
+    if is_streak_bonus_day:
+        # Vừa nhận thưởng chuỗi 3 ngày -> Trừ 10đ gốc + 5đ bonus, trả streak về 2
         amount = 15
         restored_streak = 2
         bonus_msg = " *(Trừ 10đ gốc + 5đ bonus streak)*"
     else:
-        # Bình thường trừ 10 điểm gốc
+        # Trường hợp bình thường (kể cả lần đầu điểm danh) -> Trừ 10đ gốc, lùi 1 streak
         amount = 10
         restored_streak = max(0, current_streak - 1)
         bonus_msg = " *(Trừ 10đ gốc)*"
 
     # 1. Trừ điểm & giảm 1 lượt quest
     user_info["points"] = max(0, user_info.get("points", 0) - amount)
-    user_info["total_quests"] = max(0, user_info.get("total_quests", 1) - 1)
+    user_info["total_quests"] = max(0, total_quests - 1)
 
     # 2. Khôi phục lại streak
     user_info["streak"] = restored_streak
@@ -484,7 +488,7 @@ async def refund_user(ctx, member: discord.Member):
     embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
     
     await ctx.send(embed=embed)
-
+            
 @add_diem.error
 @remove_diem.error
 @reset_user.error
