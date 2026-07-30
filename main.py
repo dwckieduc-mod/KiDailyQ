@@ -362,7 +362,7 @@ async def help_command(ctx):
     embed.add_field(
         name="💡 Quy Tắc Điểm Danh",
         value=(
-            "• `Mỗi ngày sẽ có một **Daily quest** bất kỳ dành cho Kikon. Mọi người sẽ làm theo và đăng ảnh vào channel daily để điểm danh và tăng điểm sức mạnh.`\n"
+            "• Làm nhiệm vụ và gửi ảnh.\n"
             "• Mỗi ngày điểm danh nhận **+100 KiPoints**.\n"
             "• Duy trì chuỗi điểm danh từ **ngày thứ 3 trở đi** nhận thêm **+5 KiPoints bonus** mỗi ngày."
         ),
