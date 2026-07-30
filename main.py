@@ -206,7 +206,7 @@ async def on_message(message):
         # EMBED THÔNG BÁO THÀNH CÔNG
         embed = discord.Embed(
             title="✅ ĐIỂM DANH THÀNH CÔNG!",
-            description=f"{message.author.mention} đã nộp ảnh bài tập/nhiệm vụ hôm nay!",
+            description=f"{message.author.mention} đã hoàn thành nhiệm vụ hôm nay!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -277,7 +277,7 @@ async def point(ctx, member: discord.Member = None):
         inline=True
     )
     embed.add_field(
-        name="💪 Điểm KiPoints", 
+        name="💪 Điểm Sức Mạnh", 
         value=f"**{points}** KiPoints", 
         inline=True
     )
@@ -339,8 +339,8 @@ async def help_command(ctx):
     embed.add_field(
         name="👤 Lệnh Cho Thành Viên",
         value=(
-            "• `profile` / `pf` / `[@User]`: Xem hồ sơ điểm danh & KiPoints cá nhân.\n"
-            "• `top` / `t` `[số trang]`: Bảng xếp hạng thành viên.\n"
+            "• `profile` / `pf` / `[@User]`: Xem hồ sơ.\n"
+            "• `top` / `t` `[số trang]`: Bảng xếp hạng.\n"
             "• `help` / `h`: Danh sách các lệnh."
         ),
         inline=False
@@ -354,7 +354,7 @@ async def help_command(ctx):
             "• `addstreak` / `adds` `[@User]` `<số ngày>`: Cộng chuỗi streak.\n"
             "• `removestreak` / `rms` `[@User]` <số ngày>`: Trừ chuỗi streak.\n"
             "• `reset` / `rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-            "• `refund` / `rf` `[@User]`: Hủy kết quả để làm lại"
+            "• `refund` / `rf` `[@User]`: Hủy kết quả và làm lại"
         ),
         inline=False
     )
@@ -362,7 +362,7 @@ async def help_command(ctx):
     embed.add_field(
         name="💡 Quy Tắc Điểm Danh",
         value=(
-            "• Gửi **1 tấm ảnh** vào kênh để làm nhiệm vụ Ki Ki đặt ra.\n"
+            "• Mỗi ngày sẽ có một **Daily quest** bất kỳ dành cho Kikon. Mọi người sẽ làm theo và đăng ảnh vào channel daily để điểm danh và tăng điểm sức mạnh\n"
             "• Mỗi ngày điểm danh nhận **+100 KiPoints**.\n"
             "• Duy trì chuỗi điểm danh từ **ngày thứ 3 trở đi** nhận thêm **+5 KiPoints bonus** mỗi ngày."
         ),
