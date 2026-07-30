@@ -86,10 +86,45 @@ async def send_via_webhook(ctx, content: str):
 async def on_ready():
     print(f"✅ Bot đã kết nối thành công với tên: {bot.user.name}")
 
-@bot.event
-async def on_message(message):
-    if message.author.bot:
-        return
+        # Lấy dữ liệu user (thêm mặc định total_quests = 0)
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        
+        last_date_str = user_info.get("last_date", "")
+        
+        if last_date_str:
+            last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
+            
+            if last_date == today:
+                await message.channel.send(f"⚠️ {message.author.mention}, bạn đã điểm danh ngày hôm nay rồi!")
+                await bot.process_commands(message)
+                return
+            elif last_date == today - timedelta(days=1):
+                user_info["streak"] += 1
+            else:
+                user_info["streak"] = 1
+        else:
+            user_info["streak"] = 1
+
+        base_points = 10
+        bonus_points = 0
+        
+        if user_info["streak"] == 3:
+            bonus_points = 20
+            user_info["streak"] = 0
+            streak_msg = "\n🎉 **CHÚC MỪNG!** Bạn duy trì chuỗi 3 ngày liên tiếp và nhận thêm **+20 Điểm Sức Mạnh** bonus!"
+        else:
+            streak_msg = f"\n🔥 Chuỗi hiện tại: **{user_info['streak']}/3** ngày."
+
+        total_gained = base_points + bonus_points
+        user_info["points"] += total_gained
+        user_info["last_date"] = str(today)
+        
+        # TĂNG SỐ QUEST ĐÃ HOÀN THÀNH LÊN +1
+        user_info["total_quests"] = user_info.get("total_quests", 0) + 1
+        
+        data[user_id] = user_info
+        save_data(data)
+
 
     # Kiểm tra tin nhắn có chứa ảnh hay không
     has_image = any(
@@ -155,17 +190,58 @@ async def on_message(message):
 
 # ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
-@bot.command(name="point", aliases=["pt"])
+@bot.command(name="point", aliases=["pt", "profile"])
 async def point(ctx, member: discord.Member = None):
     target = member or ctx.author
     user_id = str(target.id)
+    
     data = load_data()
-    user_info = data.get(user_id, {"points": 0, "streak": 0})
+    user_info = data.get(user_id, {"points": 0, "last_date": "Chưa có", "streak": 0, "total_quests": 0})
+
+    points = user_info.get("points", 0)
+    streak = user_info.get("streak", 0)
+    total_quests = user_info.get("total_quests", 0)
+    last_date = user_info.get("last_date", "Chưa điểm danh")
+
+    # Tạo Embed phong cách Profile Card
+    embed = discord.Embed(
+        title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
+        description=f"Bảng thống kê hoạt động của {target.mention}",
+        color=discord.Color.purple()
+    )
     
-    msg_content = f"📊 {target.mention} đang có **{user_info.get('points', 0)} Điểm Sức Mạnh** (Chuỗi: {user_info.get('streak', 0)}/3 ngày)."
-    
-    # Gửi qua Webhook
-    await send_via_webhook(ctx, msg_content)
+    # Hiện Avatar lớn của User ở bên phải tin nhắn
+    embed.set_thumbnail(url=target.display_avatar.url)
+    embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+
+    # Thống kê chi tiết
+    embed.add_field(
+        name="💪 Điểm Sức Mạnh", 
+        value=f"**{points}** điểm", 
+        inline=True
+    )
+    embed.add_field(
+        name="🔥 Chuỗi Streak", 
+        value=f"**{streak}/3** ngày", 
+        inline=True
+    )
+    embed.add_field(
+        name="🎯 Daily Quest Đã Làm", 
+        value=f"**{total_quests}** nhiệm vụ", 
+        inline=True
+    )
+    embed.add_field(
+        name="📅 Lần Cuối Điểm Danh", 
+        value=f"`{last_date}`", 
+        inline=False
+    )
+
+    embed.set_footer(
+        text=f"Yêu cầu bởi {ctx.author.display_name}", 
+        icon_url=ctx.author.display_avatar.url
+    )
+
+    await ctx.send(embed=embed)
 
 # ==================== LỚP TẠO NÚT BẤM CHUYỂN TRANG ====================
 class LeaderboardView(discord.ui.View):
