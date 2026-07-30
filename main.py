@@ -1,5 +1,5 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 import json
 import os
 from datetime import datetime, timedelta, timezone
@@ -136,10 +136,38 @@ class LeaderboardView(discord.ui.View):
                 await self.message.edit(view=self)
             except Exception:
                 pass
+# ==================== TỰ ĐỘNG KHÓA KÊNH LÚC 00:00 ====================
 
+@tasks.loop(minutes=1)
+async def auto_lock_channel():
+    # Lấy giờ Việt Nam (UTC+7)
+    vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
+    
+    # 🔒 KHÓA KÊNH LÚC 00:00 ĐÊM
+    if vietnam_now.hour == 0 and vietnam_now.minute == 0:
+        channel = bot.get_channel(QUEST_CHANNEL_ID)
+        if channel:
+            overwrite = channel.overwrites_for(channel.guild.default_role)
+            
+            if overwrite.send_messages != False:
+                overwrite.send_messages = False
+                await channel.set_permissions(channel.guild.default_role, overwrite=overwrite)
+                
+                embed = discord.Embed(
+                    title="🔒 KÊNH ĐÃ KHÓA NỘP BÀI",
+                    description="⏰ **Đã 00:00!** Hết thời gian nộp bài/điểm danh ngày hôm nay.\nKênh đã tự động khóa. Quản trị viên sẽ mở lại thủ công sau!",
+                    color=discord.Color.red()
+                )
+                await channel.send(embed=embed)
+                
 # ==================== 5. SỰ KIỆN BOT ====================
 
 @bot.event
+async def on_ready():
+    print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
+    if not auto_lock_channel.is_running():
+        auto_lock_channel.start()
+        
 async def on_message(message):
     if message.author.bot:
         return
@@ -301,7 +329,7 @@ async def point(ctx, member: discord.Member = None):
 
     await ctx.send(embed=embed)
 
-@bot.command(name="top")
+@bot.command(name="top", aliases=["t"])
 async def top(ctx, page: int = 1):
     data = load_data()
     if not data:
@@ -325,20 +353,20 @@ async def top(ctx, page: int = 1):
     message = await ctx.send(embed=embed, view=view)
     view.message = message
 
-@bot.command(name="help")
+@bot.command(name="help", aliases=["h"])
 async def help_command(ctx):
     embed = discord.Embed(
         title="📜 DANH SÁCH LỆNH BOT ĐIỂM DANH",
-        description="Tiền tố của bot là: `k.` hoặc `K.`",
+        description="Tiền tố của bot: `k.` hoặc `K.`",
         color=discord.Color.blue()
     )
     
     embed.add_field(
         name="👤 Lệnh Cho Thành Viên",
         value=(
-            "• `k.profile` / `k.pf` / `[@User]`: Xem hồ sơ điểm danh & KiPoints cá nhân.\n"
-            "• `k.top [số trang]`: Bảng xếp hạng thành viên.\n"
-            "• `k.help`: Danh sách các lệnh."
+            "• `profile` / `pf` / `[@User]`: Xem hồ sơ điểm danh & KiPoints cá nhân.\n"
+            "• `top` / `t` [số trang]`: Bảng xếp hạng thành viên.\n"
+            "• `help` / `h`: Danh sách các lệnh."
         ),
         inline=False
     )
@@ -346,12 +374,12 @@ async def help_command(ctx):
     embed.add_field(
         name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
         value=(
-            "• `k.add @User <số KiPoints>`: Cộng KiPoints.\n"
-            "• `k.remove @User <số KiPoints>`: Trừ KiPoints.\n"
-            "• `k.addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
-            "• `k.removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
-            "• `k.reset` / `k.rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-            "• `k.refund` / `k.rf` `[@User]`: Hủy kết quả để làm lại"
+            "• `add` `[@User]` <số KiPoints>`: Cộng KiPoints.\n"
+            "• `remove` / `rm` `[@User]` <số KiPoints>`: Trừ KiPoints.\n"
+            "• `addstreak` / `adds` `[@User]` <số ngày>`: Cộng chuỗi streak.\n"
+            "• `removestreak` / `rms` `[@User]` <số ngày>`: Trừ chuỗi streak.\n"
+            "• `reset` / `rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
+            "• `refund` / `rf` `[@User]`: Hủy kết quả để làm lại"
         ),
         inline=False
     )
@@ -402,7 +430,7 @@ async def add_diem_error(ctx, error):
     await ctx.send(embed=embed)
 
 
-@bot.command(name="remove")
+@bot.command(name="remove", aliases=["rm"])
 @commands.has_permissions(administrator=True)
 async def remove_diem(ctx, member: discord.Member, amount: int):
     user_id = str(member.id)
@@ -432,7 +460,7 @@ async def remove_diem_error(ctx, error):
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
     await ctx.send(embed=embed)
 
-@bot.command(name="addstreak")
+@bot.command(name="addstreak", aliases=["adds"])
 @commands.has_permissions(administrator=True)
 async def add_streak(ctx, member: discord.Member, amount: int):
     user_id = str(member.id)
@@ -472,7 +500,7 @@ async def add_streak_error(ctx, error):
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
     await ctx.send(embed=embed)
 
-@bot.command(name="removestreak")
+@bot.command(name="removestreak", aliases=["rms"])
 @commands.has_permissions(administrator=True)
 async def remove_streak(ctx, member: discord.Member, amount: int):
     user_id = str(member.id)
@@ -503,7 +531,7 @@ async def remove_streak_error(ctx, error):
     await ctx.send(embed=embed)
 
 
-@bot.command(name="reset")
+@bot.command(name="reset", aliases=["rs"])
 @commands.has_permissions(administrator=True)
 async def reset_user(ctx, member: discord.Member):
     user_id = str(member.id)
@@ -534,6 +562,48 @@ async def reset_user_error(ctx, error):
         embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
     await ctx.send(embed=embed)
 
+@bot.command(name="unlock")
+@commands.has_permissions(administrator=True)
+async def unlock_channel(ctx):
+    channel = bot.get_channel(QUEST_CHANNEL_ID) or ctx.channel
+    overwrite = channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = True
+    await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    
+    embed = discord.Embed(
+        title="🔓 KÊNH ĐÃ MỞ NỘP BÀI",
+        description="☀️ **Kênh điểm danh nhiệm vụ đã được Admin mở!**\nHãy gửi 1 tấm ảnh bài tập để nhận KiPoints ngay hôm nay.",
+        color=discord.Color.green()
+    )
+    await ctx.send(embed=embed)
+
+@unlock_channel.error
+async def unlock_channel_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        await ctx.send(embed=embed)
+
+@bot.command(name="lock")
+@commands.has_permissions(administrator=True)
+async def lock_channel(ctx):
+    channel = bot.get_channel(QUEST_CHANNEL_ID) or ctx.channel
+    overwrite = channel.overwrites_for(ctx.guild.default_role)
+    overwrite.send_messages = False
+    await channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
+    
+    embed = discord.Embed(
+        title="🔒 KHÓA KÊNH THỦ CÔNG",
+        description=f"Admin {ctx.author.mention} đã khóa kênh nộp bài.",
+        color=discord.Color.red()
+    )
+    await ctx.send(embed=embed)
+
+@lock_channel.error
+async def lock_channel_error(ctx, error):
+    if isinstance(error, commands.MissingPermissions):
+        embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        await ctx.send(embed=embed)
+                               
 
 @bot.command(name="refund", aliases=["rf"])
 @commands.has_permissions(administrator=True)
