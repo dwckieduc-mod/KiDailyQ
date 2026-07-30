@@ -385,7 +385,6 @@ if __name__ == "__main__":
     intents=intents, 
     case_insensitive=True,
     help_command=None  # Vô hiệu hóa help mặc định
-)
 
 # Loại bỏ hẳn lệnh help mặc định của discord.py để dùng help riêng
 bot.remove_command("help")
