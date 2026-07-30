@@ -143,12 +143,16 @@ async def on_message(message):
 # ==================== 5. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
 @bot.command(name="point", aliases=["pt"])
+@bot.command(name="point", aliases=["pt"])
 async def point(ctx, member: discord.Member = None):
     target = member or ctx.author
     user_id = str(target.id)
     data = load_data()
     user_info = data.get(user_id, {"points": 0, "streak": 0})
-    await ctx.send(f"📊 {target.mention} đang có **{user_info.get('points', 0)} Điểm Sức Mạnh** (Chuỗi: {user_info.get('streak', 0)}/3 ngày).")
+    
+    # target.display_name lấy tên hiển thị trong server
+    await ctx.send(f"📊 **{target.display_name}** đang có **{user_info.get('points', 0)} Điểm Sức Mạnh** (Chuỗi: {user_info.get('streak', 0)}/3 ngày).")
+
 
 @bot.command(name="top")
 async def top(ctx):
