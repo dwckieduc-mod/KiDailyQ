@@ -161,7 +161,6 @@ async def auto_lock_channel():
                 await channel.send(embed=embed)
                 
 # ==================== 5. SỰ KIỆN BOT ====================
-
 @bot.event
 async def on_ready():
     print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
@@ -172,13 +171,13 @@ async def on_message(message):
     if message.author.bot:
         return
 
-# Kiểm tra cả content_type lẫn đuôi file ảnh (.png, .jpg, .jpeg, .webp, .gif)
-image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
-has_image = any(
-    (att.content_type and att.content_type.startswith("image/")) or
-    att.filename.lower().endswith(image_extensions)
-    for att in message.attachments
-)
+    # Kiểm tra ảnh (bằng cả content_type lẫn đuôi file ảnh)
+    image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
+    has_image = any(
+        (att.content_type and att.content_type.startswith("image/")) or
+        att.filename.lower().endswith(image_extensions)
+        for att in message.attachments
+    )
 
     if has_image:
         if message.channel.id != QUEST_CHANNEL_ID:
@@ -235,7 +234,7 @@ has_image = any(
         # EMBED THÔNG BÁO THÀNH CÔNG
         embed = discord.Embed(
             title="✅ ĐIỂM DANH THÀNH CÔNG!",
-            description=f"{message.author.mention} đã hoàn thành daily quest hôm nay!",
+            description=f"{message.author.mention} đã nộp ảnh bài tập/nhiệm vụ hôm nay!",
             color=discord.Color.green()
         )
         embed.set_thumbnail(url=message.author.display_avatar.url)
@@ -258,6 +257,7 @@ has_image = any(
         await message.channel.send(embed=embed)
 
     await bot.process_commands(message)
+    
 
 # ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
