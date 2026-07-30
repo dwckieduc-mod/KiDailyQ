@@ -250,15 +250,13 @@ async def on_message(message):
         )
 
         await message.channel.send(embed=embed)
-    @bot.event
+    
 async def on_ready():
     print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
     if not auto_lock_channel.is_running():
         auto_lock_channel.start()
-        
 
     await bot.process_commands(message)
-    
 
 # ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
