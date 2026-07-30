@@ -343,6 +343,7 @@ async def help_command(ctx):
             "• `k.add @User <số điểm>`: Cộng thêm điểm cho thành viên.\n"
             "• `k.remove @User <số điểm>`: Trừ điểm của thành viên.\n"
             "• `k.reset @User`: Đặt lại toàn bộ điểm và streak của thành viên về 0."
+            "• `k.refund @User`: Trả lại lượt điểm danh & trừ điểm tự động.\n"
         ),
         inline=False
     )
@@ -422,10 +423,72 @@ async def reset_user(ctx, member: discord.Member):
             color=discord.Color.gold()
         )
     await ctx.send(embed=embed)
+@bot.command(name="refund", aliases=["traanh", "huydiemdanh"])
+@commands.has_permissions(administrator=True)
+async def refund_user(ctx, member: discord.Member):
+    user_id = str(member.id)
+    data = load_data()
+    
+    if user_id not in data:
+        embed = discord.Embed(
+            title="⚠️ KHÔNG TÌM THẤY DỮ LIỆU",
+            description=f"{member.mention} chưa có dữ liệu điểm danh trong hệ thống.",
+            color=discord.Color.gold()
+        )
+        await ctx.send(embed=embed)
+        return
+
+    user_info = data[user_id]
+    
+    # Lấy ngày hôm qua theo giờ Việt Nam
+    vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
+    today = vietnam_now.date()
+    yesterday = today - timedelta(days=1)
+
+    current_streak = user_info.get("streak", 0)
+    
+    # TỰ ĐỘNG KIỂM TRA ĐIỀU KIỆN STREAK & BONUS
+    if current_streak == 0:
+        # streak = 0 nghĩa là vừa nhận thưởng chuỗi 3 ngày hôm nay -> Trừ 10đ gốc + 5đ bonus
+        amount = 15
+        restored_streak = 2
+        bonus_msg = " *(Trừ 10đ gốc + 5đ bonus streak)*"
+    else:
+        # Bình thường trừ 10 điểm gốc
+        amount = 10
+        restored_streak = max(0, current_streak - 1)
+        bonus_msg = " *(Trừ 10đ gốc)*"
+
+    # 1. Trừ điểm & giảm 1 lượt quest
+    user_info["points"] = max(0, user_info.get("points", 0) - amount)
+    user_info["total_quests"] = max(0, user_info.get("total_quests", 1) - 1)
+
+    # 2. Khôi phục lại streak
+    user_info["streak"] = restored_streak
+
+    # 3. Đặt last_date về ngày hôm qua để user có thể nộp ảnh mới ngay
+    user_info["last_date"] = str(yesterday)
+
+    data[user_id] = user_info
+    save_data(data)
+
+    # EMBED THÔNG BÁO HOÀN TRẢ
+    embed = discord.Embed(
+        title="🔄 HOÀN TRẢ LƯỢT ĐIỂM DANH",
+        description=f"📢 {member.mention}\n**Nhiệm vụ này đã kết thúc!\nHãy làm nhiệm vụ mới**",
+        color=discord.Color.blue()
+    )
+    embed.add_field(name="🔻 Điểm Trừ", value=f"**-{amount}** điểm{bonus_msg}", inline=False)
+    embed.add_field(name="💰 Điểm Còn Lại", value=f"**{user_info['points']}** điểm", inline=True)
+    embed.add_field(name="🔥 Streak Khôi Phục", value=f"**{user_info['streak']}/3** ngày", inline=True)
+    embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+    
+    await ctx.send(embed=embed)
 
 @add_diem.error
 @remove_diem.error
 @reset_user.error
+@refund_user.error
 async def admin_command_error(ctx, error):
     if isinstance(error, commands.MissingPermissions):
         embed = discord.Embed(
