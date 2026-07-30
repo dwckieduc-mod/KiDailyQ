@@ -430,17 +430,19 @@ async def refund_user(ctx, member: discord.Member):
     user_id = str(member.id)
     data = load_data()
     
-    if user_id not in data:
+    user_info = data.get(user_id)
+
+    # 🛑 KIỂM TRA: Nếu user chưa có trong database HOẶC chưa từng nộp ảnh (total_quests == 0)
+    if not user_info or user_info.get("total_quests", 0) == 0 or not user_info.get("last_date"):
         embed = discord.Embed(
-            title="⚠️ KHÔNG TÌM THẤY DỮ LIỆU",
-            description=f"{member.mention} chưa có dữ liệu điểm danh trong hệ thống.",
+            title="⚠️ KHÔNG THỂ HOÀN TRẢ",
+            description=f"Thành viên {member.mention} **chưa từng gửi bất kỳ ảnh bài tập/nhiệm vụ nào**, không thể thực hiện refund!",
             color=discord.Color.gold()
         )
+        embed.set_footer(text=f"Yêu cầu bởi Admin: {ctx.author.display_name}")
         await ctx.send(embed=embed)
         return
 
-    user_info = data[user_id]
-    
     # Lấy ngày hôm qua theo giờ Việt Nam
     vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
     today = vietnam_now.date()
@@ -458,7 +460,7 @@ async def refund_user(ctx, member: discord.Member):
         restored_streak = 2
         bonus_msg = " *(Trừ 10đ gốc + 5đ bonus streak)*"
     else:
-        # Trường hợp bình thường (kể cả lần đầu điểm danh) -> Trừ 10đ gốc, lùi 1 streak
+        # Trường hợp bình thường -> Trừ 10đ gốc, lùi 1 streak
         amount = 10
         restored_streak = max(0, current_streak - 1)
         bonus_msg = " *(Trừ 10đ gốc)*"
@@ -476,7 +478,7 @@ async def refund_user(ctx, member: discord.Member):
     data[user_id] = user_info
     save_data(data)
 
-    # EMBED THÔNG BÁO HOÀN TRẢ
+    # EMBED THÔNG BÁO HOÀN TRẢ THÀNH CÔNG
     embed = discord.Embed(
         title="🔄 HOÀN TRẢ LƯỢT ĐIỂM DANH",
         description=f"📢 {member.mention}\n**Nhiệm vụ này đã kết thúc!\nHãy làm nhiệm vụ mới**",
@@ -488,7 +490,7 @@ async def refund_user(ctx, member: discord.Member):
     embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
     
     await ctx.send(embed=embed)
-            
+    
 @add_diem.error
 @remove_diem.error
 @reset_user.error
