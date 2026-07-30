@@ -311,7 +311,7 @@ async def help_command(ctx):
         name="👤 Lệnh Cho Thành Viên",
         value=(
             "• `k.pt` / `k.point` / `k.profile` `[@User]`: Xem hồ sơ điểm danh & thông số cá nhân.\n"
-            "• `k.top [số trang]`: Bảng xếp hạng thành viên (Có nút chuyển trang).\n"
+            "• `k.top [số trang]`: Bảng xếp hạng thành viên.\n"
             "• `k.help`: Hiển thị bảng hướng dẫn này."
         ),
         inline=False
