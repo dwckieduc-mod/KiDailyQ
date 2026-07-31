@@ -23,8 +23,8 @@ def keep_alive():
 
 # ==================== 2. CẤU HÌNH BOT & MÔI TRƯỜNG ====================
 
-QUEST_CHANNEL_ID = 1424823714700197908
-COMMAND_CHANNEL_ID = 1424823714700197908  # <--- THÊM DÒNG NÀY (Thay ID kênh bạn muốn nhận lệnh vào đây)
+QUEST_CHANNEL_ID = 1531955248481177731
+COMMAND_CHANNEL_ID = 1531955248481177731  # <--- THÊM DÒNG NÀY (Thay ID kênh bạn muốn nhận lệnh vào đây)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
