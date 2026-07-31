@@ -1,4 +1,5 @@
 discord.py
-Flask
 pymongo
 dnspython
+certifi
+flask
