@@ -1,3 +1,4 @@
+import certifi
 import discord
 from discord.ext import commands, tasks
 import os
@@ -27,12 +28,21 @@ QUEST_CHANNEL_ID = 1531955248481177731
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 MONGO_URI = os.environ.get("MONGO_URI")
 
-# KẾT NỐI MONGODB ATLAS
+# KẾT NỐI MONGODB ATLAS (ĐÃ THÊM SSL & TIMEOUT)
 if MONGO_URI:
-    cluster = MongoClient(MONGO_URI)
-    db = cluster["discord_bot_db"]
-    collection = db["user_data"]
-    print("✅ Đã kết nối thành công tới Cloud Database MongoDB Atlas!")
+    try:
+        cluster = MongoClient(
+            MONGO_URI, 
+            tlsCAFile=certifi.where(),
+            serverSelectionTimeoutMS=5000 # Hạn chế treo bot nếu DB lỗi
+        )
+        db = cluster["discord_bot_db"]
+        collection = db["user_data"]
+        # Thử truy vấn test để xác nhận kết nối thật sự
+        cluster.admin.command('ping')
+        print("✅ Đã kết nối thành công tới Cloud Database MongoDB Atlas!")
+    except Exception as e:
+        print(f"❌ LỖI KẾT NỐI MONGODB: {e}")
 else:
     print("❌ LỖI: Chưa cấu hình biến môi trường 'MONGO_URI' trên Render!")
 
