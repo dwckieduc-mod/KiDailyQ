@@ -24,6 +24,7 @@ def keep_alive():
 # ==================== 2. CẤU HÌNH BOT & MÔI TRƯỜNG ====================
 
 QUEST_CHANNEL_ID = 1531955248481177731
+COMMAND_CHANNEL_ID = 1531955248481177731  # <--- THÊM DÒNG NÀY (Thay ID kênh bạn muốn nhận lệnh vào đây)
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
@@ -260,6 +261,20 @@ async def on_message(message):
         await message.channel.send(embed=embed)
 
     await bot.process_commands(message)
+@bot.check
+async def restrict_channel(ctx):
+    # NẾU MUỐN ADMIN VẪN DÙNG ĐƯỢC LỆNH Ở MỌI KÊNH, BỎ DẤU # Ở DÒNG DƯỚI:
+    if ctx.author.guild_permissions.administrator: return True
+
+    return ctx.channel.id == COMMAND_CHANNEL_ID
+
+@bot.event
+async def on_command_error(ctx, error):
+    if isinstance(error, commands.CheckFailure):
+        return
+    if isinstance(error, commands.CommandNotFound):
+        return
+    raise error
 
 # ==================== 6. LỆNH DÀNH CHO THÀNH VIÊN ====================
 
