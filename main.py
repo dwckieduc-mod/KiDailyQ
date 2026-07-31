@@ -297,49 +297,46 @@ async def on_message(message):
 
 @bot.command(name="profile", aliases=["pf"])
 async def point(ctx, member: discord.Member = None):
-    target = member or ctx.author
-    user_id = str(target.id)
-    
-    user_info = get_user(user_id)
-    points = user_info.get("points", 0)
-    streak = user_info.get("streak", 0)
-    total_quests = user_info.get("total_quests", 0)
-    last_date = user_info.get("last_date") or "Chưa điểm danh"
+    try:
+        target = member or ctx.author
+        user_id = str(target.id)
+        
+        user_info = get_user(user_id)
+        points = user_info.get("points", 0)
+        streak = user_info.get("streak", 0)
+        total_quests = user_info.get("total_quests", 0)
+        last_date = user_info.get("last_date") or "Chưa điểm danh"
 
-    # ================= TÍNH THỨ HẠNG (RANK) =================
-    rank_str = "Chưa xếp hạng"
-    sorted_users = get_leaderboard_data()
-    if sorted_users:
-        for idx, (uid, info) in enumerate(sorted_users, start=1):
-            if uid == user_id:
-                if idx == 1:
-                    rank_str = "🥇 Top 1"
-                elif idx == 2:
-                    rank_str = "🥈 Top 2"
-                elif idx == 3:
-                    rank_str = "🥉 Top 3"
-                else:
-                    rank_str = f"#{idx} / {len(sorted_users)}"
-                break
+        rank_str = "Chưa xếp hạng"
+        sorted_users = get_leaderboard_data()
+        if sorted_users:
+            for idx, (uid, info) in enumerate(sorted_users, start=1):
+                if uid == user_id:
+                    if idx == 1: rank_str = "🥇 Top 1"
+                    elif idx == 2: rank_str = "🥈 Top 2"
+                    elif idx == 3: rank_str = "🥉 Top 3"
+                    else: rank_str = f"#{idx} / {len(sorted_users)}"
+                    break
 
-    embed = discord.Embed(
-        title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
-        description=f"Bảng thống kê hoạt động của {target.mention}",
-        color=discord.Color.purple()
-    )
-    
-    embed.set_thumbnail(url=target.display_avatar.url)
-    embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+        embed = discord.Embed(
+            title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
+            description=f"Bảng thống kê hoạt động của {target.mention}",
+            color=discord.Color.purple()
+        )
+        embed.set_thumbnail(url=target.display_avatar.url)
+        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
 
-    embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-    embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{points}** KiPoints", inline=True)
-    embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
-    embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
-    embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
+        embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
+        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{points}** KiPoints", inline=True)
+        embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
+        embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
+        embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
 
-    embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-    await ctx.send(embed=embed)
-
+        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        await ctx.send(embed=embed)
+    except Exception as e:
+        await ctx.send(f"❌ **Lỗi kết nối CSDL MongoDB:** `{e}`\n*(Vui lòng kiểm tra lại MONGO_URI trên Render!)*")
+            
 @bot.command(name="top", aliases=["t"])
 async def top(ctx, page: int = 1):
     sorted_users = get_leaderboard_data()
