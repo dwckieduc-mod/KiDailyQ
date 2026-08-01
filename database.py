@@ -21,8 +21,17 @@ def load_data():
         req = urllib.request.Request(url, headers=headers)
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
-            content = result["files"]["user_data.json"]["content"]
-            return json.loads(content)
+            files = result.get("files", {})
+            
+            # 💡 Tự động linh hoạt nhận diện data.json hoặc user_data.json
+            file_obj = files.get("user_data.json") or files.get("data.json")
+            
+            if file_obj and "content" in file_obj:
+                content = file_obj["content"]
+                return json.loads(content) if content.strip() else {}
+            else:
+                print("⚠️ Không tìm thấy file data.json hoặc user_data.json trên Gist!")
+                return {}
     except Exception as e:
         print(f"❌ Lỗi khi đọc dữ liệu từ Gist: {e}")
         return {}
@@ -40,6 +49,7 @@ def save_data(data):
         "User-Agent": "DiscordBot"
     }
     
+    # Lưu vào user_data.json
     payload = json.dumps({
         "files": {
             "user_data.json": {
@@ -60,3 +70,4 @@ def get_streak_text(streak: int) -> str:
     if streak >= 3:
         return f"{streak} ngày 🔥"
     return f"{streak} ngày ❄️"
+    
