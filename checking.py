@@ -4,8 +4,8 @@ from discord.ext import commands
 from datetime import datetime, timedelta, timezone
 from database import load_data, save_data, get_streak_text
 
-# 👉 LẤY ID KÊNH QUEST TỪ ENVIRONMENT
-QUEST_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
+# 👉 LẤY ID KÊNH ĐIỂM DANH TỪ ENVIRONMENT (Biến DAILY_CHANNEL_ID)
+DAILY_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
 
 class CheckinCog(commands.Cog):
     def __init__(self, bot):
@@ -13,9 +13,11 @@ class CheckinCog(commands.Cog):
 
     @commands.Cog.listener()
     async def on_message(self, message):
+        # Bỏ qua tin nhắn của bot
         if message.author.bot:
             return
 
+        # Kiểm tra xem tin nhắn có đính kèm hình ảnh không
         image_extensions = ('.png', '.jpg', '.jpeg', '.webp', '.gif')
         has_image = any(
             (att.content_type and att.content_type.startswith("image/")) or
@@ -24,6 +26,7 @@ class CheckinCog(commands.Cog):
         )
 
         if has_image:
+            # Chỉ xử lý nếu gửi ảnh ĐÚNG trong kênh DAILY_CHANNEL_ID
             if message.channel.id != DAILY_CHANNEL_ID:
                 return
 
@@ -91,3 +94,4 @@ class CheckinCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(CheckinCog(bot))
+    
