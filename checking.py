@@ -2,7 +2,6 @@ import os
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data, get_streak_text
 from database import load_data, save_data, get_streak_text, format_points
 
 # 👉 LẤY ID KÊNH ĐIỂM DANH TỪ ENVIRONMENT (Biến DAILY_CHANNEL_ID)
