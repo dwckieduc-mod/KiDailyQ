@@ -118,7 +118,7 @@ class MemberCog(commands.Cog):
         embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
 
         embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints (`{format_points(points, shorten=False)}`)", inline=True)
+        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints", inline=True)
         embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
         embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
         embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
