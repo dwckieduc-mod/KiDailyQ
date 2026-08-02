@@ -161,9 +161,9 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="👤 Lệnh Cho Thành Viên",
             value=(
-                "• `profile` / `pf` `[@User]`: Xem hồ sơ.\n"
-                "• `top` / `t` `[số trang]`: Bảng xếp hạng.\n"
-                "• `help` / `h`: Danh sách các lệnh."
+                "• `profile / pf @User`: Xem hồ sơ.\n"
+                "• `top / t số trang`: Bảng xếp hạng.\n"
+                "• `help / h`: Danh sách các lệnh."
             ),
             inline=False
         )
@@ -171,12 +171,12 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
             value=(
-                "• `add` `[@User]` `<số KiPoints>`: Cộng KiPoints.\n"
-                "• `remove` / `rm` `[@User]` `<số KiPoints>`: Trừ KiPoints.\n"
-                "• `addstreak` / `adds` `[@User]` `<số ngày>`: Cộng chuỗi streak.\n"
-                "• `removestreak` / `rms` `[@User]` `<số ngày>`: Trừ chuỗi streak.\n"
-                "• `reset` / `rs` `[@User]`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-                "• `refund` / `rf` `[@User]`: Hủy kết quả và làm lại.\n"
+                "• `add @User <số KiPoints>`: Cộng KiPoints.\n"
+                "• `remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
+                "• `addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
+                "• `removestreak / rms @User` `<số ngày>`: Trừ chuỗi streak.\n"
+                "• `reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
+                "• `deny / dn @User`: Hủy kết quả và làm lại.\n"
                 "• `unlock`: Mở kênh.\n"
                 "• `lock`: Khóa kênh."
             ),
