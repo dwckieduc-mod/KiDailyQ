@@ -66,13 +66,10 @@ def save_data(data):
         print(f"❌ Lỗi khi lưu dữ liệu lên Gist: {e}")
 
 def get_streak_text(streak_days: int) -> str:
-    if streak_days <= 0:
-        return "Chưa có streak"
-    elif streak_days == 1:
-        return "🔥 1 ngày"
-    else:
-        return f"🔥 {streak_days} ngày liên tiếp"
-
+    if streak_days < 3:
+        return f"❄️ {max(0, streak_days)} ngày"
+    return f"🔥 {streak_days} ngày"
+    
 def format_points(points: int, shorten: bool = False) -> str:
     """
     Định dạng số điểm KiPoints:
