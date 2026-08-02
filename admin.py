@@ -81,7 +81,7 @@ class AdminCog(commands.Cog):
     # --- 📋 LỆNH XEM DANH SÁCH KÊNH ĐƯỢC PHÉP (channel_allow_list) ---
     @commands.command(name="allowlist", aliases=["al"])
     @commands.has_permissions(administrator=True)
-    async def channel_allow_list(self, ctx):
+    async def allowlist(self, ctx):
         data = load_allowed_channels()
         if not data:
             embed = discord.Embed(
@@ -105,7 +105,7 @@ class AdminCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @allowlist.error
-    async def channel_allow_list_error(self, ctx, error):
+    async def allowlist_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
         else:
