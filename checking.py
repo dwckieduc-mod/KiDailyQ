@@ -2,7 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data
+from database import load_data, save_data, get_streak_text, format_points
 
 # 👉 CỐ ĐỊNH KÊNH ĐIỂM DANH QUA BIẾN MÔI TRƯỜNG DAILY_CHANNEL_ID
 DAILY_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
@@ -43,11 +43,21 @@ class CheckinCog(commands.Cog):
             if last_date_str:
                 last_date = datetime.strptime(last_date_str, "%Y-%m-%d").date()
                 if last_date == today:
+                    # 1. Thả emoji ❌
                     try:
                         await message.add_reaction("❌")
                     except discord.HTTPException:
                         pass
+
+                    # 2. Gửi Embed cảnh báo (TỰ XÓA SAU 7 GIÂY)
+                    embed = discord.Embed(
+                        title="⚠️ ĐÃ ĐIỂM DANH HÔM NAY",
+                        description=f"{message.author.mention}, bạn đã nộp ảnh điểm danh ngày hôm nay rồi!",
+                        color=discord.Color.gold()
+                    )
+                    await message.channel.send(embed=embed, delete_after=7)
                     return
+
                 elif last_date == today - timedelta(days=1):
                     user_info["streak"] += 1
                 else:
@@ -71,14 +81,42 @@ class CheckinCog(commands.Cog):
 
             # ✅ TRƯỜNG HỢP 2: ĐIỂM DANH THÀNH CÔNG
             try:
+                # 1. Thả emoji ✅
                 await message.add_reaction("✅")
                 
-                # 🔥 TRƯỜNG HỢP 3: KÍCH HOẠT THƯỞNG STREAK (TỪ NGÀY 3 TRỞ ĐI)
+                # 2. Thả emoji 🔥 nếu đạt streak từ ngày 3 trở đi
                 if is_streak_active:
                     await message.add_reaction("🔥")
             except discord.HTTPException as e:
                 print(f"❌ Lỗi khi bot thả emoji: {e}")
 
+            # 3. Tạo Embed thông báo kết quả chi tiết
+            embed = discord.Embed(
+                title="✅ ĐIỂM DANH THÀNH CÔNG!",
+                description=f"{message.author.mention} đã hoàn thành nhiệm vụ hôm nay!",
+                color=discord.Color.green()
+            )
+            embed.set_thumbnail(url=message.author.display_avatar.url)
+            embed.add_field(name="💪 KiPoints Nhận Được", value=f"**+{total_gained}** KiPoints", inline=True)
+            embed.add_field(name="💰 Tổng KiPoints Hiện Có", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
+            
+            if is_streak_active:
+                embed.add_field(
+                    name="🎉 THƯỞNG CHUỖI STREAK!", 
+                    value=f"Bạn duy trì chuỗi **{user_info['streak']} ngày** liên tiếp và nhận thêm **+5 KiPoints Bonus**!", 
+                    inline=False
+                )
+            
+            embed.add_field(
+                name="🔥 Chuỗi Streak", 
+                value=f"**{get_streak_text(user_info['streak'])}**", 
+                inline=False
+            )
+
+            # ⏱️ GỬI VÀ TỰ ĐỘNG XÓA THÔNG BÁO SAU 10 GIÂY
+            await message.channel.send(embed=embed, delete_after=10)
+
+
 async def setup(bot):
     await bot.add_cog(CheckinCog(bot))
-    
+            
