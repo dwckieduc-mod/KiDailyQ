@@ -78,7 +78,6 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    # --- 📋 LỆNH XEM DANH SÁCH KÊNH ĐƯỢC PHÉP (channel_allow_list) ---
     @commands.command(name="allowlist", aliases=["al"])
     @commands.has_permissions(administrator=True)
     async def allowlist(self, ctx):
@@ -86,7 +85,7 @@ class AdminCog(commands.Cog):
         if not data:
             embed = discord.Embed(
                 title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
-                description="Hiện chưa có kênh nào trong `channel_allow.json`!\nQuản trị viên hãy dùng lệnh `k.allow #kênh True` để thêm.",
+                description="Hiện chưa có kênh nào được cấp quyền!\nQuản trị viên hãy dùng lệnh `k.allow #kênh True` để thêm.",
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
@@ -94,7 +93,7 @@ class AdminCog(commands.Cog):
 
         channel_list_str = ""
         for idx, (cid, status) in enumerate(data.items(), start=1):
-            channel_list_str += f"**{idx}.** <#{cid}> — `ID: {cid}` (Được phép: `{status}`)\n"
+            channel_list_str += f"**{idx}.** <#{cid}> (Được phép: `{status}`)\n"
 
         embed = discord.Embed(
             title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
