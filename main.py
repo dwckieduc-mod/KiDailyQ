@@ -25,20 +25,17 @@ async def restrict_channel(ctx):
         return True
         
     allowed_channels = load_allowed_channels()
-    # Check ID kênh hiện tại có trong channel_allow.json và là True không
+    # Check ID kênh hiện tại có trong channel_allow.json và trạng thái == True không
     return allowed_channels.get(str(ctx.channel.id), False) == True
 
-# 🛑 BẮT LỖI TỰ ĐỘNG KHI THÀNH VIÊN DÙNG SAI KÊNH
+# 🛑 BẮT LỖI TỰ ĐỘNG (XỬ LÝ IM LẶNG KHI SAI KÊNH)
 @bot.event
 async def on_command_error(ctx, error):
     if isinstance(error, commands.CheckFailure):
-        allowed_channels = load_allowed_channels()
-        if not allowed_channels:
-            await ctx.send("⚠️ **Hệ thống:** Chưa có kênh nào được cấp quyền dùng lệnh! Admin hãy dùng `k.channel_allow #kênh True` để thiết lập.")
-        else:
-            channel_mentions = ", ".join([f"<#{cid}>" for cid in allowed_channels.keys()])
-            await ctx.send(f"⚠️ {ctx.author.mention}, bạn chỉ có thể dùng lệnh tại các kênh sau: {channel_mentions}")
+        # 🤫 Im lặng hoàn toàn, không gửi tin nhắn thông báo ra chat
+        pass
     elif isinstance(error, commands.CommandNotFound):
+        # 🤫 Bỏ qua lỗi gõ sai lệnh
         pass
     else:
         print(f"❌ Lỗi thực thi lệnh: {error}")
