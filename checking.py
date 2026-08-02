@@ -4,7 +4,7 @@ from discord.ext import commands
 from datetime import datetime, timedelta, timezone
 from database import load_data, save_data, get_streak_text, format_points
 
-# 👉 LẤY ID KÊNH ĐIỂM DANH TỪ ENVIRONMENT (Biến DAILY_CHANNEL_ID)
+# 👉 CỐ ĐỊNH KÊNH ĐIỂM DANH QUA BIẾN MOI TRƯỜNG DAILY_CHANNEL_ID
 DAILY_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
 
 class CheckinCog(commands.Cog):
@@ -26,7 +26,7 @@ class CheckinCog(commands.Cog):
         )
 
         if has_image:
-            # Chỉ xử lý nếu gửi ảnh ĐÚNG trong kênh DAILY_CHANNEL_ID
+            # 🔒 CHỈ XỬ LÝ KHI GỬI ĐÚNG VÀO KÊNH DAILY_CHANNEL_ID
             if message.channel.id != DAILY_CHANNEL_ID:
                 return
 
