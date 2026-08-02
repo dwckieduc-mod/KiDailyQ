@@ -3,6 +3,7 @@ import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
 from database import load_data, save_data, get_streak_text
+from database import load_data, save_data, get_streak_text, format_points
 
 # 👉 LẤY ID KÊNH ĐIỂM DANH TỪ ENVIRONMENT (Biến DAILY_CHANNEL_ID)
 DAILY_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
@@ -75,7 +76,7 @@ class CheckinCog(commands.Cog):
             )
             embed.set_thumbnail(url=message.author.display_avatar.url)
             embed.add_field(name="💪 KiPoints Nhận Được", value=f"**+{total_gained}** KiPoints", inline=True)
-            embed.add_field(name="💰 Tổng KiPoints Hiện Có", value=f"**{user_info['points']}** KiPoints", inline=True)
+            embed.add_field(name="💰 Tổng KiPoints Hiện Có", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
             
             if is_bonus:
                 embed.add_field(
