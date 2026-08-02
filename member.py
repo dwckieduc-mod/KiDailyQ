@@ -161,9 +161,9 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="👤 Lệnh Cho Thành Viên",
             value=(
-                "• `profile / pf @User`: Xem hồ sơ.\n"
-                "• `top / t số trang`: Bảng xếp hạng.\n"
-                "• `help / h`: Danh sách các lệnh."
+                "`profile / pf @User`: Xem hồ sơ.\n"
+                "`top / t số trang`: Bảng xếp hạng.\n"
+                "`help / h`: Danh sách các lệnh."
             ),
             inline=False
         )
@@ -171,14 +171,16 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
             value=(
-                "• `add @User <số KiPoints>`: Cộng KiPoints.\n"
-                "• `remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
-                "• `addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
-                "• `removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
-                "• `reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
-                "• `deny / dn @User`: Hủy kết quả và làm lại.\n"
-                "• `unlock`: Mở kênh.\n"
-                "• `lock`: Khóa kênh."
+                "`add @User <số KiPoints>`: Cộng KiPoints.\n"
+                "`remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
+                "`addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
+                "`removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
+                "`reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
+                "`deny / dn @User`: Hủy kết quả và làm lại.\n"
+                "`allow <channel id> true/false`: chỉ định kênh mà member được dùng lệnh./n"
+                "`allowlist / al`: xem danh sách các kênh được cấp quyền./n>
+                "`unlock`: Mở kênh.\n"
+                "`lock`: Khóa kênh."
             ),
             inline=False
         )
@@ -186,9 +188,9 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="💡 Quy Tắc Điểm Danh",
             value=(
-                "• Làm nhiệm vụ và gửi ảnh.\n"
-                "• Mỗi ngày điểm danh nhận **+100 KiPoints**.\n"
-                "• Duy trì chuỗi điểm danh từ **ngày thứ 3 trở đi** nhận thêm **+5 KiPoints bonus** mỗi ngày."
+                "Làm nhiệm vụ và gửi ảnh.\n"
+                "Mỗi ngày điểm danh nhận **+100 KiPoints**.\n"
+                "Duy trì chuỗi điểm danh từ **ngày thứ 3 trở đi** nhận thêm **+5 KiPoints bonus** mỗi ngày."
             ),
             inline=False
         )
