@@ -64,7 +64,16 @@ def save_data(data):
             pass
     except Exception as e:
         print(f"❌ Lỗi khi lưu dữ liệu lên Gist: {e}")
-        
+
+# 👉 BỔ SUNG HÀM BỊ THIẾU DẪN ĐẾN LỖI IMPORT
+def get_streak_text(streak_days: int) -> str:
+    if streak_days <= 0:
+        return "Chưa có streak"
+    elif streak_days == 1:
+        return "🔥 1 ngày"
+    else:
+        return f"🔥 {streak_days} ngày liên tiếp"
+
 def format_points(points: int, shorten: bool = False) -> str:
     """
     Định dạng số điểm KiPoints:
@@ -80,5 +89,7 @@ def format_points(points: int, shorten: bool = False) -> str:
             val = round(points / 1_000, 1)
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
-#Định dạng phân cách hàng nghìn bằng dấu chấm (VD: 100.580)
+
+    # Định dạng phân cách hàng nghìn bằng dấu chấm (VD: 100.580)
     return f"{points:,}".replace(",", ".")
+    
