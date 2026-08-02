@@ -65,7 +65,6 @@ def save_data(data):
     except Exception as e:
         print(f"❌ Lỗi khi lưu dữ liệu lên Gist: {e}")
 
-# 👉 BỔ SUNG HÀM BỊ THIẾU DẪN ĐẾN LỖI IMPORT
 def get_streak_text(streak_days: int) -> str:
     if streak_days <= 0:
         return "Chưa có streak"
