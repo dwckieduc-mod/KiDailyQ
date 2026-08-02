@@ -2,6 +2,7 @@ import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
 from database import load_data, save_data, get_streak_text
+from database import load_data, save_data, get_streak_text, format_points
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
@@ -23,7 +24,7 @@ class AdminCog(commands.Cog):
             description=f"Đã cộng **+{amount} KiPoints** cho {member.mention}!",
             color=discord.Color.green()
         )
-        embed.add_field(name="💰 Tổng KiPoints Mới", value=f"**{user_info['points']}** KiPoints")
+        embed.add_field(name="💰 Tổng KiPoints Mới", value=f"**{format_points(user_info['points'])}** KiPoints")
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -52,8 +53,7 @@ class AdminCog(commands.Cog):
             title="🔻 TRỪ KIPOINTS",
             description=f"Đã trừ **-{amount} KiPoints** của {member.mention}!",
             color=discord.Color.red()
-        )
-        embed.add_field(name="💰 Tổng KiPoints Còn Lại", value=f"**{user_info['points']}** KiPoints")
+        embed.add_field(name="💰 Tổng KiPoints Còn Lại", value=f"**{format_points(user_info['points'])}** KiPoints")
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
@@ -166,7 +166,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    @commands.command(name="refund", aliases=["rf"])
+    @commands.command(name="deny", aliases=["dn"])
     @commands.has_permissions(administrator=True)
     async def refund_user(self, ctx, member: discord.Member):
         user_id = str(member.id)
@@ -177,7 +177,7 @@ class AdminCog(commands.Cog):
         if not user_info or user_info.get("total_quests", 0) == 0 or not user_info.get("last_date"):
             embed = discord.Embed(
                 title="⚠️ KHÔNG THỂ HOÀN TRẢ",
-                description=f"Thành viên {member.mention} **chưa từng làm nhiệm vụ nào**, không thể thực hiện refund!",
+                description=f"Thành viên {member.mention} **chưa từng làm nhiệm vụ nào**",
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"Yêu cầu bởi Admin: {ctx.author.display_name}")
@@ -213,7 +213,7 @@ class AdminCog(commands.Cog):
             color=discord.Color.blue()
         )
         embed.add_field(name="🔻 KiPoints Trừ", value=f"**-{amount}** KiPoints{bonus_msg}", inline=False)
-        embed.add_field(name="💰 KiPoints Còn Lại", value=f"**{user_info['points']}** KiPoints", inline=True)
+        embed.add_field(name="💰 KiPoints Còn Lại", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
         embed.add_field(name="🔥 Streak Khôi Phục", value=f"**{get_streak_text(restored_streak)}**", inline=True)
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
         
