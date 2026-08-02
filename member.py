@@ -174,7 +174,7 @@ class MemberCog(commands.Cog):
                 "• `add @User <số KiPoints>`: Cộng KiPoints.\n"
                 "• `remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
                 "• `addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
-                "• `removestreak / rms @User` `<số ngày>`: Trừ chuỗi streak.\n"
+                "• `removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
                 "• `reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
                 "• `deny / dn @User`: Hủy kết quả và làm lại.\n"
                 "• `unlock`: Mở kênh.\n"
