@@ -1,7 +1,6 @@
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data, get_streak_text
 from database import load_data, save_data, get_streak_text, format_points
 
 class AdminCog(commands.Cog):
@@ -53,6 +52,7 @@ class AdminCog(commands.Cog):
             title="🔻 TRỪ KIPOINTS",
             description=f"Đã trừ **-{amount} KiPoints** của {member.mention}!",
             color=discord.Color.red()
+        )
         embed.add_field(name="💰 Tổng KiPoints Còn Lại", value=f"**{format_points(user_info['points'])}** KiPoints")
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
         await ctx.send(embed=embed)
@@ -231,3 +231,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
+    
