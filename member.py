@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from database import load_data, get_streak_text
+from database import load_data, get_streak_text, format_points
 
 class LeaderboardView(discord.ui.View):
     def __init__(self, data, author_id, per_page=10):
@@ -42,7 +43,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 medal = f"**#{index}**"
                 
-            description += f"{medal} <@{user_id}> - **{points}** KiPoints (Chuỗi: {streak_display})\n"
+            description += f"{medal} <@{user_id}> - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
 
         embed.description = description
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
@@ -117,7 +118,7 @@ class MemberCog(commands.Cog):
         embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
 
         embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{points}** KiPoints", inline=True)
+        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints (`{format_points(points, shorten=True)}`)", inline=True)
         embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
         embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
         embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
