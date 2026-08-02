@@ -55,7 +55,7 @@ class CheckinCog(commands.Cog):
                         description=f"{message.author.mention}, bạn đã nộp ảnh điểm danh ngày hôm nay rồi!",
                         color=discord.Color.gold()
                     )
-                    await message.channel.send(embed=embed, delete_after=7)
+                    await message.channel.send(embed=embed, delete_after=1)
                     return
 
                 elif last_date == today - timedelta(days=1):
@@ -114,7 +114,7 @@ class CheckinCog(commands.Cog):
             )
 
             # ⏱️ GỬI VÀ TỰ ĐỘNG XÓA THÔNG BÁO SAU 10 GIÂY
-            await message.channel.send(embed=embed, delete_after=10)
+            await message.channel.send(embed=embed, delete_after=4)
 
 
 async def setup(bot):
