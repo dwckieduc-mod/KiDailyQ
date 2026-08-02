@@ -13,7 +13,7 @@ class AdminCog(commands.Cog):
     # --- ⚙️ LỆNH QUẢN LÝ KÊNH CHO PHÉP (channel_allow) ---
     @commands.command(name="allow")
     @commands.has_permissions(administrator=True)
-    async def channel_allow(self, ctx, channel_input: str, status: str):
+    async def allow(self, ctx, channel_input: str, status: str):
         is_true = status.lower() in ["true", "1", "yes", "on"]
         is_false = status.lower() in ["false", "0", "no", "off"]
 
