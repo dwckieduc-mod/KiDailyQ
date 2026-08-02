@@ -1,12 +1,118 @@
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data, get_streak_text, format_points
+from database import (
+    load_data, save_data, get_streak_text, format_points, 
+    load_allowed_channels, save_allowed_channels
+)
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    # --- ⚙️ LỆNH QUẢN LÝ KÊNH CHO PHÉP (channel_allow) ---
+    @commands.command(name="channel_allow", aliases=["callow"])
+    @commands.has_permissions(administrator=True)
+    async def channel_allow(self, ctx, channel_input: str, status: str):
+        is_true = status.lower() in ["true", "1", "yes", "on"]
+        is_false = status.lower() in ["false", "0", "no", "off"]
+
+        if not (is_true or is_false):
+            embed = discord.Embed(
+                title="⚠️ TRẠNG THÁI KHÔNG HỢP LỆ",
+                description="Vui lòng nhập `True` (cho phép) hoặc `False` (từ chối/xóa).\n**Ví dụ:** `k.channel_allow #kênh True`",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        clean_id = channel_input.strip("<#> ")
+        if not clean_id.isdigit():
+            embed = discord.Embed(
+                title="⚠️ KÊNH KHÔNG HỢP LỆ",
+                description="Vui lòng tag `#kênh` hoặc nhập đúng **ID kênh**!",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        data = load_allowed_channels()
+
+        if is_true:
+            data[clean_id] = True
+            save_allowed_channels(data)
+            embed = discord.Embed(
+                title="✅ CẤP QUYỀN KÊNH THÀNH CÔNG",
+                description=f"Kênh <#{clean_id}> (`{clean_id}`) **đã được phép** sử dụng lệnh bot!\nTrạng thái: `True`",
+                color=discord.Color.green()
+            )
+        else:
+            if clean_id in data:
+                del data[clean_id]
+                save_allowed_channels(data)
+                embed = discord.Embed(
+                    title="🗑️ ĐÃ XÓA KÊNH KHỎI HỆ THỐNG",
+                    description=f"Kênh <#{clean_id}> (`{clean_id}`) đã bị **từ chối và xóa khỏi** file `channel_allow.json`!",
+                    color=discord.Color.red()
+                )
+            else:
+                embed = discord.Embed(
+                    title="⚠️ KÊNH CHƯA TỒN TẠI",
+                    description=f"Kênh <#{clean_id}> (`{clean_id}`) vốn chưa có trong danh sách được cấp quyền.",
+                    color=discord.Color.gold()
+                )
+
+        await ctx.send(embed=embed)
+
+    @channel_allow.error
+    async def channel_allow_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
+            embed = discord.Embed(
+                title="⚠️ SAI CÚ PHÁP LỆNH CHANNEL_ALLOW",
+                description="Vui lòng nhập đúng:\n• `k.channel_allow #kênh True` (Cấp quyền)\n• `k.channel_allow #kênh False` (Xóa khỏi danh sách)",
+                color=discord.Color.gold()
+            )
+        else:
+            embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
+        await ctx.send(embed=embed)
+
+    # --- 📋 LỆNH XEM DANH SÁCH KÊNH ĐƯỢC PHÉP (channel_allow_list) ---
+    @commands.command(name="channel_allow_list", aliases=["callowlist", "allowlist"])
+    @commands.has_permissions(administrator=True)
+    async def channel_allow_list(self, ctx):
+        data = load_allowed_channels()
+        if not data:
+            embed = discord.Embed(
+                title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
+                description="Hiện chưa có kênh nào trong `channel_allow.json`!\nQuản trị viên hãy dùng lệnh `k.channel_allow #kênh True` để thêm.",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
+            return
+
+        channel_list_str = ""
+        for idx, (cid, status) in enumerate(data.items(), start=1):
+            channel_list_str += f"**{idx}.** <#{cid}> — `ID: {cid}` (Được phép: `{status}`)\n"
+
+        embed = discord.Embed(
+            title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
+            description=channel_list_str,
+            color=discord.Color.blue()
+        )
+        embed.set_footer(text=f"Tổng số: {len(data)} kênh")
+        await ctx.send(embed=embed)
+
+    @channel_allow_list.error
+    async def channel_allow_list_error(self, ctx, error):
+        if isinstance(error, commands.MissingPermissions):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        else:
+            embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
+        await ctx.send(embed=embed)
+
+    # --- CÁC LỆNH ADMIN KHÁC GIỮ NGUYÊN ---
     @commands.command(name="add")
     @commands.has_permissions(administrator=True)
     async def add_diem(self, ctx, member: discord.Member, amount: int):
@@ -231,4 +337,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-    
+            
