@@ -177,8 +177,8 @@ class MemberCog(commands.Cog):
                 "`removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
                 "`reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
                 "`deny / dn @User`: Hủy kết quả và làm lại.\n"
-                "`allow <channel id> true/false`: chỉ định kênh mà member được dùng lệnh./n"
-                "`allowlist / al`: xem danh sách các kênh được cấp quyền./n>"
+                "`allow <channel id> true/false`: chỉ định kênh mà member được dùng lệnh.\n"
+                "`allowlist / al`: xem danh sách các kênh được cấp quyền.\n>"
                 "`unlock`: Mở kênh.\n"
                 "`lock`: Khóa kênh."
             ),
