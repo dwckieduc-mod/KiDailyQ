@@ -157,12 +157,12 @@ class MemberCog(commands.Cog):
     async def rule_command(self, ctx):
         embed = discord.Embed(
             title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
-            description="Vui lòng tuân thủ các quy định dưới đây khi tham gia điểm danh:",
+            description="",
             color=discord.Color.gold()
         )
 
         embed.add_field(
-            name="⚖️ . Luật Daily Quest:",
+            name="📖 . Hình thức làm Daily Quest:",
             value=(
                 "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
                 f"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào <#{DAILY_CHANNEL_ID}> để làm minh chứng.\n"
@@ -171,7 +171,7 @@ class MemberCog(commands.Cog):
         )
 
         embed.add_field(
-            name="📊 . Quy luật tính điểm:",
+            name="📊 . Cách tính điểm:",
             value=(
                 "- Khi bạn gửi ảnh thì được bot thông báo và thả biểu cảm trên ảnh với các emoji sau:\n"
                 "- -  ✅ Hoàn thành.\n"
