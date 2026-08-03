@@ -198,10 +198,10 @@ async def rule_command(self, ctx):
 	    ),
             inline=False
 		)
-
-		embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        
+        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
         await ctx.send(embed=embed)
-		
+
     @commands.command(name="help", aliases=["h"])
     async def help_command(self, ctx):
         embed = discord.Embed(
