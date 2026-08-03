@@ -151,7 +151,7 @@ class MemberCog(commands.Cog):
         view.message = message
 
 @commands.command(name="rule", aliases=["r"])
-    async def rule_command(self, ctx):
+async def rule_command(self, ctx):
         embed = discord.Embed(
             title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
             description="Vui lòng tuân thủ các quy định dưới đây khi tham gia điểm danh:",
@@ -161,40 +161,47 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="⚖️ . Luật Daily Quest:",
             value=(
-"- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào <#{DAILY_CHANNEL_ID}> để làm minh chứng.\n"
+				"- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
+				"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào <#{DAILY_CHANNEL_ID}> để làm minh chứng.\n"
 	    ),
             inline=False
         )
+		
 	embed.add_field(
             name="📊 . Quy luật tính điểm:",
             value=(
-"- Khi bạn gửi ảnh thì được bot thông báo và thả biểu cảm trên ảnh với các emoji sau:\n"
-"- -  ✅ Hoàn thành.\n"
-"- - ❌ Đã làm nhiệm vụ trước đó rồi.\n"
-"- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
-"- Hoàn thành nhiệm vụ sẽ được cộng **100 KiPoints**.\n"
-"- Khi đạt điều kiện streak **( ≥ 3 ngày)** thì bạn sẽ được cộng thêm **5 KiPoints** thưởng giữ chuỗi.\n"
-"- Khi qua ngày mới bot sẽ khoá kênh lại kết thúc nhiệm vụ hôm đó.\n"
+				"- Khi bạn gửi ảnh thì được bot thông báo và thả biểu cảm trên ảnh với các emoji sau:\n"
+				"- -  ✅ Hoàn thành.\n"
+				"- - ❌ Đã làm nhiệm vụ trước đó rồi.\n"
+				"- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
+				"- Hoàn thành nhiệm vụ sẽ được cộng **100 KiPoints**.\n"
+				"- Khi đạt điều kiện streak **( ≥ 3 ngày)** thì bạn sẽ được cộng thêm **5 KiPoints** thưởng giữ chuỗi.\n"
+				"- Khi qua ngày mới bot sẽ khoá kênh lại kết thúc nhiệm vụ hôm đó.\n"
             ),
             inline=False
 	)
+		
 	embed.add_field(
             name="🚫 . Về hành vi sai phạm:",
             value=(
-"- Làm sai nhiệm vụ / hình ảnh không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
-"- Hình ảnh vẫn phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý\n"
+				"- Làm sai nhiệm vụ / hình ảnh không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
+				"- Hình ảnh vẫn phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý\n"
 	    ),
             inline=False
 	)
+		
 	embed.add_field(
             name="📃 . Về lệnh của bot:",
             value=(
-"- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
-"- Để biết về tên lệnh, hãy nhập lệnh `help / h` để  xem danh sách các lệnh.\n"
+				"- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
+				"- Để biết về tên lệnh, hãy nhập lệnh `help / h` để  xem danh sách các lệnh.\n"
 	    ),
             inline=False
 	)
+		
+	embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+        await ctx.send(embed=embed)
+		
     @commands.command(name="help", aliases=["h"])
     async def help_command(self, ctx):
         embed = discord.Embed(
@@ -206,8 +213,8 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="👤 Lệnh Cho Thành Viên",
             value=(
-		"`help / h`: Danh sách các lệnh.\n"
-		"`rule / r`: Quy định và cách tính điểm.\n"
+				"`help / h`: Danh sách các lệnh.\n"
+				"`rule / r`: Quy định và cách tính điểm.\n"
                 "`profile / pf @User`: Xem hồ sơ.\n"
                 "`top / t số trang`: Bảng xếp hạng.\n"
             ),
