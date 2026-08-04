@@ -87,7 +87,7 @@ class MemberCog(commands.Cog):
         target = member or ctx.author
         user_id = str(target.id)
         
-        data = load_data()
+        data = await load_data()
         user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
         points = user_info.get("points", 0)
@@ -130,7 +130,7 @@ class MemberCog(commands.Cog):
 
     @commands.command(name="top", aliases=["t"])
     async def top(self, ctx, page: int = 1):
-        data = load_data()
+        data = await load_data()
         if not data:
             await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
             return
@@ -255,4 +255,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-						
+		
