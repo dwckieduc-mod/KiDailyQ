@@ -13,7 +13,6 @@ class ChannelLockCog(commands.Cog):
     def cog_unload(self):
         self.auto_lock_channel.cancel()
 
-    # --- ⏰ VÒNG LẶP TỰ ĐỘNG KHÓA LÚC 00:00 ---
     @tasks.loop(minutes=1)
     async def auto_lock_channel(self):
         vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
@@ -33,7 +32,6 @@ class ChannelLockCog(commands.Cog):
                     )
                     await channel.send(embed=embed)
 
-    # --- 🔓 LỆNH MỞ KÊNH THỦ CÔNG ---
     @commands.command(name="unlock")
     @commands.has_permissions(manage_channels=True)
     async def unlock_channel(self, ctx):
@@ -58,7 +56,6 @@ class ChannelLockCog(commands.Cog):
             embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Manage Channels** để dùng lệnh này!", color=discord.Color.red())
             await ctx.send(embed=embed)
 
-    # --- 🔒 LỆNH KHÓA KÊNH THỦ CÔNG ---
     @commands.command(name="lock")
     @commands.has_permissions(manage_channels=True)
     async def lock_channel(self, ctx):
