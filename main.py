@@ -40,10 +40,10 @@ async def on_ready():
 async def main():
     keep_alive()
     async with bot:
-        await bot.load_extension("main.lock")
-        await bot.load_extension("main.check")
-        await bot.load_extension("main.member")
-        await bot.load_extension("main.admin")
+        await bot.load_extension("mains.lock")
+        await bot.load_extension("mains.check")
+        await bot.load_extension("mains.member")
+        await bot.load_extension("mains.admin")
         await bot.start(BOT_TOKEN)
 
 if __name__ == "__main__":
