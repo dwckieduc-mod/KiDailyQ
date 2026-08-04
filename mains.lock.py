@@ -32,6 +32,10 @@ class ChannelLockCog(commands.Cog):
                     )
                     await channel.send(embed=embed)
 
+    @auto_lock_channel.before_loop
+    async def before_auto_lock(self):
+        await self.bot.wait_until_ready()
+
     @commands.command(name="unlock")
     @commands.has_permissions(manage_channels=True)
     async def unlock_channel(self, ctx):
@@ -82,3 +86,4 @@ class ChannelLockCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(ChannelLockCog(bot))
+    
