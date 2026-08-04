@@ -35,11 +35,11 @@ class AdminCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        data = load_allowed_channels()
+        data = await load_allowed_channels()
 
         if is_true:
             data[clean_id] = True
-            save_allowed_channels(data)
+            await save_allowed_channels(data)
             embed = discord.Embed(
                 title="✅ CẤP QUYỀN KÊNH THÀNH CÔNG",
                 description=f"Kênh <#{clean_id}> **đã được phép** sử dụng lệnh bot!\nTrạng thái: `True`",
@@ -48,7 +48,7 @@ class AdminCog(commands.Cog):
         else:
             if clean_id in data:
                 del data[clean_id]
-                save_allowed_channels(data)
+                await save_allowed_channels(data)
                 embed = discord.Embed(
                     title="🗑️ ĐÃ XÓA KÊNH KHỎI HỆ THỐNG",
                     description=f"Kênh <#{clean_id}> đã bị **từ chối và xóa khỏi** file `channel_allow.json`!",
@@ -80,7 +80,7 @@ class AdminCog(commands.Cog):
     @commands.command(name="allowlist", aliases=["al"])
     @commands.has_permissions(administrator=True)
     async def allowlist(self, ctx):
-        data = load_allowed_channels()
+        data = await load_allowed_channels()
         if not data:
             embed = discord.Embed(
                 title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
@@ -110,17 +110,16 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    # --- CÁC LỆNH ADMIN KHÁC ---
     @commands.command(name="add")
     @commands.has_permissions(administrator=True)
     async def add_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
-        data = load_data()
+        data = await load_data()
         user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
         
         user_info["points"] += amount
         data[user_id] = user_info
-        save_data(data)
+        await save_data(data)
         
         embed = discord.Embed(
             title="🔺 CỘNG KIPOINTS",
@@ -145,12 +144,12 @@ class AdminCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def remove_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
-        data = load_data()
+        data = await load_data()
         user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
         
         user_info["points"] = max(0, user_info["points"] - amount)
         data[user_id] = user_info
-        save_data(data)
+        await save_data(data)
         
         embed = discord.Embed(
             title="🔻 TRỪ KIPOINTS",
@@ -175,7 +174,7 @@ class AdminCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def add_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
-        data = load_data()
+        data = await load_data()
         user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
         
         user_info["streak"] = max(0, user_info.get("streak", 0) + amount)
@@ -188,7 +187,7 @@ class AdminCog(commands.Cog):
             user_info["last_date"] = str(yesterday)
 
         data[user_id] = user_info
-        save_data(data)
+        await save_data(data)
         
         embed = discord.Embed(
             title="🔥 CỘNG STREAK",
@@ -213,12 +212,12 @@ class AdminCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def remove_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
-        data = load_data()
+        data = await load_data()
         user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
         
         user_info["streak"] = max(0, user_info.get("streak", 0) - amount)
         data[user_id] = user_info
-        save_data(data)
+        await save_data(data)
         
         embed = discord.Embed(
             title="🔻 TRỪ STREAK",
@@ -251,7 +250,7 @@ class AdminCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        data = load_data()
+        data = await load_data()
         if target.lower() == "all":
             if not data:
                 embed = discord.Embed(
@@ -262,7 +261,7 @@ class AdminCog(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            save_data({})
+            await save_data({})
             embed = discord.Embed(
                 title="💥 RESET TOÀN BỘ HỆ THỐNG THÀNH CÔNG",
                 description="Toàn bộ dữ liệu KiPoints, Chuỗi Streak & Lịch sử điểm danh của **TẤT CẢ** thành viên đã được đưa về 0.",
@@ -277,7 +276,7 @@ class AdminCog(commands.Cog):
             user_id = str(member.id)
             if user_id in data:
                 del data[user_id]
-                save_data(data)
+                await save_data(data)
                 embed = discord.Embed(
                     title="🔄 RESET DỮ LIỆU THÀNH CÔNG",
                     description=f"Toàn bộ dữ liệu KiPoints & stats của {member.mention} đã được đưa về 0.",
@@ -311,23 +310,22 @@ class AdminCog(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def refund_user(self, ctx, member: discord.Member):
         user_id = str(member.id)
-        data = load_data()
+        data = await load_data()
         
         user_info = data.get(user_id)
+        vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
+        today = vietnam_now.date()
+        yesterday = today - timedelta(days=1)
 
-        if not user_info or user_info.get("total_quests", 0) == 0 or not user_info.get("last_date"):
+        if not user_info or user_info.get("total_quests", 0) == 0 or user_info.get("last_date") != str(today):
             embed = discord.Embed(
                 title="⚠️ KHÔNG THỂ HOÀN TRẢ",
-                description=f"Thành viên {member.mention} **chưa từng làm nhiệm vụ nào**",
+                description=f"Thành viên {member.mention} **chưa điểm danh ngày hôm nay**",
                 color=discord.Color.gold()
             )
             embed.set_footer(text=f"Yêu cầu bởi Admin: {ctx.author.display_name}")
             await ctx.send(embed=embed)
             return
-
-        vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
-        today = vietnam_now.date()
-        yesterday = today - timedelta(days=1)
 
         current_streak = user_info.get("streak", 0)
         
@@ -346,7 +344,7 @@ class AdminCog(commands.Cog):
         user_info["last_date"] = str(yesterday)
 
         data[user_id] = user_info
-        save_data(data)
+        await save_data(data)
 
         embed = discord.Embed(
             title="🔄 HOÀN TRẢ LƯỢT ĐIỂM DANH",
@@ -365,11 +363,11 @@ class AdminCog(commands.Cog):
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
-            embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH REFUND", description="Vui lòng nhập đúng:\n• `k.refund @User` hoặc `k.rf @User`", color=discord.Color.gold())
+            embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH DENY", description="Vui lòng nhập đúng:\n• `k.deny @User` hoặc `k.dn @User`", color=discord.Color.gold())
         else:
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-            
+        
