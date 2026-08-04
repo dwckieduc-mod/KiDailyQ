@@ -3,7 +3,6 @@ import discord
 from discord.ext import commands
 from database import load_data, get_streak_text, format_points
 
-# 👉 LẤY ID KÊNH TỪ BIẾN MÔI TRƯỜNG ĐỂ TAG KÊNH TRONG LỆNH RULE
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
 class LeaderboardView(discord.ui.View):
@@ -231,7 +230,7 @@ class MemberCog(commands.Cog):
                 "`remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
                 "`addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
                 "`removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
-                "`reset / rs @User`: Đặt lại toàn bộ dữ liệu của thành viên.\n"
+                "`reset / rs @User/all`: Đặt lại toàn bộ dữ liệu thành viên/tất cả.\n"
                 "`deny / dn @User`: Hủy kết quả và làm lại.\n"
                 "`allow <channel id> true/false`: Chỉ định kênh mà member được dùng lệnh.\n"
                 "`allowlist / al`: Xem danh sách các kênh được cấp quyền.\n"
