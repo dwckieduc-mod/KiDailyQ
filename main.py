@@ -19,16 +19,14 @@ bot = commands.Bot(
 
 @bot.check
 async def restrict_channel(ctx):
-    if ctx.author.guild_permissions.administrator: 
+    if ctx.guild and ctx.author.guild_permissions.administrator: 
         return True
-    allowed_channels = load_allowed_channels()
-    return allowed_channels.get(str(ctx.channel.id), False) == True
+    allowed_channels = await load_allowed_channels()
+    return allowed_channels.get(str(ctx.channel.id), False) is True
 
 @bot.event
 async def on_command_error(ctx, error):
-    if isinstance(error, commands.CheckFailure):
-        pass
-    elif isinstance(error, commands.CommandNotFound):
+    if isinstance(error, (commands.CheckFailure, commands.CommandNotFound)):
         pass
     else:
         print(f"❌ Lỗi thực thi lệnh: {error}")
