@@ -111,7 +111,7 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    # --- CÁC LỆNH ADMIN KHÁC GIỮ NGUYÊN ---
+    # --- CÁC LỆNH ADMIN KHÁC ---
     @commands.command(name="add")
     @commands.has_permissions(administrator=True)
     async def add_diem(self, ctx, member: discord.Member, amount: int):
@@ -240,33 +240,78 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
+    # 💥 LỆNH RESET DỮ LIỆU (RESET 1 THÀNH VIÊN HOẶC RESET TOÀN BỘ SERVER)
     @commands.command(name="reset", aliases=["rs"])
     @commands.has_permissions(administrator=True)
-    async def reset_user(self, ctx, member: discord.Member):
-        user_id = str(member.id)
-        data = load_data()
-        if user_id in data:
-            del data[user_id]
-            save_data(data)
+    async def reset_user(self, ctx, target: str = None):
+        if not target:
             embed = discord.Embed(
-                title="🔄 RESET DỮ LIỆU THÀNH CÔNG",
-                description=f"Toàn bộ dữ liệu KiPoints & stats của {member.mention} đã được đưa về 0.",
-                color=discord.Color.red()
-            )
-        else:
-            embed = discord.Embed(
-                title="⚠️ KHÔNG TÌM THẤY DỮ LIỆU",
-                description=f"{member.mention} chưa có dữ liệu điểm danh trong hệ thống.",
+                title="⚠️ SAI CÚ PHÁP LỆNH RESET",
+                description="Vui lòng nhập đúng:\n• `k.reset @User` (Reset 1 thành viên)\n• `k.reset all` (Reset toàn bộ hệ thống)",
                 color=discord.Color.gold()
             )
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
+            return
+
+        data = load_data()
+
+        # ---------------------------------------------------------
+        # TRƯỜNG HỢP 1: RESET TOÀN BỘ SERVER (k.reset all)
+        # ---------------------------------------------------------
+        if target.lower() == "all":
+            if not data:
+                embed = discord.Embed(
+                    title="📋 KHÔNG CÓ DỮ LIỆU",
+                    description="Hệ thống hiện tại chưa có dữ liệu nào để reset!",
+                    color=discord.Color.gold()
+                )
+                await ctx.send(embed=embed)
+                return
+
+            save_data({})  # Xóa sạch toàn bộ database
+            embed = discord.Embed(
+                title="💥 RESET TOÀN BỘ HỆ THỐNG THÀNH CÔNG",
+                description="Toàn bộ dữ liệu KiPoints, Chuỗi Streak & Lịch sử điểm danh của **TẤT CẢ** thành viên đã được đưa về 0.",
+                color=discord.Color.red()
+            )
+            embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+            await ctx.send(embed=embed)
+            return
+
+        # ---------------------------------------------------------
+        # TRƯỜNG HỢP 2: RESET 1 CÁ NHÂN (k.reset @User)
+        # ---------------------------------------------------------
+        try:
+            member = await commands.MemberConverter().convert(ctx, target)
+            user_id = str(member.id)
+            if user_id in data:
+                del data[user_id]
+                save_data(data)
+                embed = discord.Embed(
+                    title="🔄 RESET DỮ LIỆU THÀNH CÔNG",
+                    description=f"Toàn bộ dữ liệu KiPoints & stats của {member.mention} đã được đưa về 0.",
+                    color=discord.Color.red()
+                )
+            else:
+                embed = discord.Embed(
+                    title="⚠️ KHÔNG TÌM THẤY DỮ LIỆU",
+                    description=f"{member.mention} chưa có dữ liệu điểm danh trong hệ thống.",
+                    color=discord.Color.gold()
+                )
+            embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+            await ctx.send(embed=embed)
+        except commands.BadArgument:
+            embed = discord.Embed(
+                title="⚠️ ĐỐI TƯỢNG KHÔNG HỢP LỆ",
+                description="Vui lòng tag `@User` hoặc nhập `all` để reset toàn bộ!",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
 
     @reset_user.error
     async def reset_user_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
             embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
-        elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
-            embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH RESET", description="Vui lòng nhập đúng:\n• `k.reset @User`", color=discord.Color.gold())
         else:
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
