@@ -29,7 +29,7 @@ class CheckinCog(commands.Cog):
             vietnam_now = datetime.now(timezone.utc) + timedelta(hours=7)
             today = vietnam_now.date()
             
-            data = load_data()
+            data = await load_data()
             user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
             
             last_date_str = user_info.get("last_date", "")
@@ -67,7 +67,7 @@ class CheckinCog(commands.Cog):
             user_info["total_quests"] = user_info.get("total_quests", 0) + 1
             
             data[user_id] = user_info
-            save_data(data)
+            await save_data(data)
 
             try:
                 await message.add_reaction("✅")
@@ -100,4 +100,4 @@ class CheckinCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(CheckinCog(bot))
-            
+    
