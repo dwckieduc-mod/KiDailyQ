@@ -10,7 +10,6 @@ class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    # --- ⚙️ LỆNH QUẢN LÝ KÊNH CHO PHÉP (channel_allow) ---
     @commands.command(name="allow")
     @commands.has_permissions(administrator=True)
     async def allow(self, ctx, channel_input: str, status: str):
@@ -240,7 +239,6 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    # 💥 LỆNH RESET DỮ LIỆU (RESET 1 THÀNH VIÊN HOẶC RESET TOÀN BỘ SERVER)
     @commands.command(name="reset", aliases=["rs"])
     @commands.has_permissions(administrator=True)
     async def reset_user(self, ctx, target: str = None):
@@ -254,10 +252,6 @@ class AdminCog(commands.Cog):
             return
 
         data = load_data()
-
-        # ---------------------------------------------------------
-        # TRƯỜNG HỢP 1: RESET TOÀN BỘ SERVER (k.reset all)
-        # ---------------------------------------------------------
         if target.lower() == "all":
             if not data:
                 embed = discord.Embed(
@@ -268,7 +262,7 @@ class AdminCog(commands.Cog):
                 await ctx.send(embed=embed)
                 return
 
-            save_data({})  # Xóa sạch toàn bộ database
+            save_data({})
             embed = discord.Embed(
                 title="💥 RESET TOÀN BỘ HỆ THỐNG THÀNH CÔNG",
                 description="Toàn bộ dữ liệu KiPoints, Chuỗi Streak & Lịch sử điểm danh của **TẤT CẢ** thành viên đã được đưa về 0.",
@@ -278,9 +272,6 @@ class AdminCog(commands.Cog):
             await ctx.send(embed=embed)
             return
 
-        # ---------------------------------------------------------
-        # TRƯỜNG HỢP 2: RESET 1 CÁ NHÂN (k.reset @User)
-        # ---------------------------------------------------------
         try:
             member = await commands.MemberConverter().convert(ctx, target)
             user_id = str(member.id)
