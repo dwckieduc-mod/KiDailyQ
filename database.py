@@ -5,7 +5,6 @@ import urllib.request
 GIST_ID = os.environ.get("GIST_ID")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
-# --- HÀM QUẢN LÝ DỮ LIỆU USER (user_data.json) ---
 def load_data():
     if not GITHUB_TOKEN or not GIST_ID:
         print("⚠️ Thiếu GITHUB_TOKEN hoặc GIST_ID trong Environment Variables!")
@@ -45,7 +44,6 @@ def save_data(data):
         "Content-Type": "application/json",
         "User-Agent": "DiscordBot"
     }
-    
     payload = json.dumps({
         "files": {
             "user_data.json": {
@@ -61,7 +59,6 @@ def save_data(data):
     except Exception as e:
         print(f"❌ Lỗi khi lưu dữ liệu lên Gist: {e}")
 
-# --- HÀM QUẢN LÝ KÊNH CHO PHÉP (channel_allow.json) ---
 def load_allowed_channels():
     if not GITHUB_TOKEN or not GIST_ID:
         return {}
@@ -78,8 +75,7 @@ def load_allowed_channels():
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
             files = result.get("files", {})
-            file_obj = files.get("channel_allow.json")
-            
+            file_obj = files.get("allow.json")
             if file_obj and "content" in file_obj:
                 content = file_obj["content"]
                 return json.loads(content) if content.strip() else {}
@@ -115,10 +111,9 @@ def save_allowed_channels(data):
     except Exception as e:
         print(f"❌ Lỗi khi lưu channel_allow.json: {e}")
 
-# --- HELPER FUNCTIONS ---
 def get_streak_text(streak_days: int) -> str:
     if streak_days < 3:
-        return f"❄️ {max(0, streak_days)} ngày"
+        return f"🧊 {max(0, streak_days)} ngày"
     return f"🔥 {streak_days} ngày"
 
 def format_points(points: int, shorten: bool = False) -> str:
@@ -130,6 +125,5 @@ def format_points(points: int, shorten: bool = False) -> str:
             val = round(points / 1_000, 1)
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
-
     return f"{points:,}".replace(",", ".")
             
