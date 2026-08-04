@@ -1,13 +1,13 @@
 import os
 import json
 import urllib.request
+import asyncio
 
 GIST_ID = os.environ.get("GIST_ID")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
 
-def load_data():
+def _load_data_sync():
     if not GITHUB_TOKEN or not GIST_ID:
-        print("⚠️ Thiếu GITHUB_TOKEN hoặc GIST_ID trong Environment Variables!")
         return {}
     
     url = f"https://api.github.com/gists/{GIST_ID}"
@@ -29,11 +29,13 @@ def load_data():
                 return json.loads(content) if content.strip() else {}
             else:
                 return {}
-    except Exception as e:
-        print(f"❌ Lỗi khi đọc dữ liệu từ Gist: {e}")
+    except Exception:
         return {}
 
-def save_data(data):
+async def load_data():
+    return await asyncio.to_thread(_load_data_sync)
+
+def _save_data_sync(data):
     if not GITHUB_TOKEN or not GIST_ID:
         return
 
@@ -54,12 +56,15 @@ def save_data(data):
     
     try:
         req = urllib.request.Request(url, data=payload, headers=headers, method="PATCH")
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req):
             pass
-    except Exception as e:
-        print(f"❌ Lỗi khi lưu dữ liệu lên Gist: {e}")
+    except Exception:
+        pass
 
-def load_allowed_channels():
+async def save_data(data):
+    await asyncio.to_thread(_save_data_sync, data)
+
+def _load_allowed_channels_sync():
     if not GITHUB_TOKEN or not GIST_ID:
         return {}
     
@@ -75,7 +80,7 @@ def load_allowed_channels():
         with urllib.request.urlopen(req) as response:
             result = json.loads(response.read().decode('utf-8'))
             files = result.get("files", {})
-            file_obj = files.get("allow.json")
+            file_obj = files.get("channel_allow.json")
             if file_obj and "content" in file_obj:
                 content = file_obj["content"]
                 return json.loads(content) if content.strip() else {}
@@ -84,7 +89,10 @@ def load_allowed_channels():
     except Exception:
         return {}
 
-def save_allowed_channels(data):
+async def load_allowed_channels():
+    return await asyncio.to_thread(_load_allowed_channels_sync)
+
+def _save_allowed_channels_sync(data):
     if not GITHUB_TOKEN or not GIST_ID:
         return
 
@@ -106,10 +114,13 @@ def save_allowed_channels(data):
     
     try:
         req = urllib.request.Request(url, data=payload, headers=headers, method="PATCH")
-        with urllib.request.urlopen(req) as response:
+        with urllib.request.urlopen(req):
             pass
-    except Exception as e:
-        print(f"❌ Lỗi khi lưu channel_allow.json: {e}")
+    except Exception:
+        pass
+
+async def save_allowed_channels(data):
+    await asyncio.to_thread(_save_allowed_channels_sync, data)
 
 def get_streak_text(streak_days: int) -> str:
     if streak_days < 3:
@@ -126,4 +137,3 @@ def format_points(points: int, shorten: bool = False) -> str:
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
     return f"{points:,}".replace(",", ".")
-            
