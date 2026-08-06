@@ -152,8 +152,8 @@ class MemberCog(commands.Cog):
         message = await ctx.send(embed=embed, view=view)
         view.message = message
 
-        @commands.command(name="rule", aliases=["r"])
-        async def rule_command(self, ctx):
+    @commands.command(name="rule", aliases=["r"])
+    async def rule_command(self, ctx):
         allowed_data = await load_allowed_channels(self.bot)
         image_channels = []
         
