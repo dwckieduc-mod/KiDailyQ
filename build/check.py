@@ -2,9 +2,7 @@ import os
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data, get_streak_text, format_points
-
-DAILY_CHANNEL_ID = int(os.environ.get("DAILY_CHANNEL_ID", 0))
+from database import load_data, save_data, get_streak_text, format_points, load_allowed_channels
 
 class CheckinCog(commands.Cog):
     def __init__(self, bot):
@@ -22,7 +20,12 @@ class CheckinCog(commands.Cog):
         )
 
         if has_image:
-            if message.channel.id != DAILY_CHANNEL_ID:
+            allowed_channels = await load_allowed_channels()
+            ch_perms = allowed_channels.get(str(message.channel.id), {})
+            if isinstance(ch_perms, bool):
+                ch_perms = {"command": ch_perms, "image": False}
+
+            if not ch_perms.get("image", False):
                 return
 
             user_id = str(message.author.id)
@@ -100,4 +103,4 @@ class CheckinCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(CheckinCog(bot))
-  
+    
