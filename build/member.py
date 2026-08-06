@@ -1,7 +1,7 @@
 import os
 import discord
 from discord.ext import commands
-from database import load_data, get_streak_text, format_points
+from database import load_data, get_streak_text, format_points, load_allowed_channels
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
@@ -154,6 +154,19 @@ class MemberCog(commands.Cog):
 
     @commands.command(name="rule", aliases=["r"])
     async def rule_command(self, ctx):
+        allowed_data = await load_allowed_channels()
+        image_channels = []
+        
+        if allowed_data:
+            for cid, perms in allowed_data.items():
+                if isinstance(perms, dict) and perms.get("image"):
+                    image_channels.append(f"<#{cid}>")
+
+        if image_channels:
+            channels_str = ", ".join(image_channels)
+        else:
+            channels_str = "*kênh chưa được thiết lập*"
+
         embed = discord.Embed(
             title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
             description="",
@@ -164,7 +177,7 @@ class MemberCog(commands.Cog):
             name="📖 . Hình thức làm Daily Quest:",
             value=(
                 "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-                "- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào kênh được chỉ định để làm minh chứng.\n"
+                f"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào {channels_str} để làm minh chứng.\n"
             ),
             inline=False
         )
@@ -296,4 +309,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-        
+            
