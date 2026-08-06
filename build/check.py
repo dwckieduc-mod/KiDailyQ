@@ -56,7 +56,7 @@ class CheckCog(commands.Cog):
                 description=f"{message.author.mention} Bạn đã làm nhiệm vụ và nhận điểm ngày hôm nay rồi!",
                 color=discord.Color.red()
             )
-            await message.channel.send(embed=embed, delete_after=10)
+            await message.channel.send(embed=embed, delete_after=3)
             return
 
         # TRƯỜNG HỢP B: Chưa điểm danh hôm nay -> Tiến hành cộng điểm danh
@@ -102,7 +102,7 @@ class CheckCog(commands.Cog):
         embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(new_streak)}**", inline=True)
         embed.add_field(name="💳 Tổng KiPoints", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
 
-        await message.channel.send(embed=embed)
+        await message.channel.send(embed=embed, delete_after=3)
 
 async def setup(bot):
     await bot.add_cog(CheckCog(bot))
