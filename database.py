@@ -2,6 +2,7 @@ import os
 import json
 import urllib.request
 import asyncio
+import discord
 
 GIST_ID = os.environ.get("GIST_ID")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
@@ -89,8 +90,37 @@ def _load_allowed_channels_sync():
     except Exception:
         return {}
 
-async def load_allowed_channels():
-    return await asyncio.to_thread(_load_allowed_channels_sync)
+async def load_allowed_channels(bot=None):
+    data = await asyncio.to_thread(_load_allowed_channels_sync)
+    
+    # Nếu truyền bot vào, kiểm tra tính tồn tại của các kênh
+    if bot and data:
+        cleaned_data = {}
+        has_deleted = False
+
+        for cid_str, perms in list(data.items()):
+            if not cid_str.isdigit():
+                has_deleted = True
+                continue
+
+            cid = int(cid_str)
+            channel = bot.get_channel(cid)
+            if channel is None:
+                try:
+                    channel = await bot.fetch_channel(cid)
+                except (discord.NotFound, discord.HTTPException):
+                    channel = None
+
+            if channel is not None:
+                cleaned_data[cid_str] = perms
+            else:
+                has_deleted = True
+
+        if has_deleted:
+            await save_allowed_channels(cleaned_data)
+            return cleaned_data
+
+    return data
 
 def _save_allowed_channels_sync(data):
     if not GITHUB_TOKEN or not GIST_ID:
@@ -137,3 +167,4 @@ def format_points(points: int, shorten: bool = False) -> str:
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
     return f"{points:,}".replace(",", ".")
+    
