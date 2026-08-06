@@ -205,53 +205,94 @@ class MemberCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="help", aliases=["h"])
-    async def help_command(self, ctx):
-        embed = discord.Embed(
-            title="📜 DANH SÁCH LỆNH BOT ĐIỂM DANH",
-            description="Cú pháp bot: `k.<lệnh>` / `K.<lệnh>`",
-            color=discord.Color.blue()
-        )
-        
-        embed.add_field(
-            name="👤 Lệnh Cho Thành Viên",
-            value=(
-                "`help / h`: Danh sách các lệnh.\n"
-                "`rule / r`: Quy định và cách tính điểm.\n"
-                "`profile / pf @User`: Xem hồ sơ.\n"
-                "`top / t số trang`: Bảng xếp hạng.\n"
-            ),
-            inline=False
-        )
-        
-        embed.add_field(
-            name="⚙️ Lệnh Cho Quản Trị Viên (Admin)",
-            value=(
-                "`add @User <số KiPoints>`: Cộng KiPoints.\n"
-                "`remove / rm @User <số KiPoints>`: Trừ KiPoints.\n"
-                "`addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
-                "`removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
-                "`reset / rs @User/all`: Đặt lại toàn bộ dữ liệu thành viên/tất cả.\n"
-                "`deny / dn @User`: Hủy kết quả và làm lại.\n"
-                "`allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh.\n"
-                "`allowlist / al`: Xem danh sách phân quyền các kênh.\n"
-                "`unlock`: Mở kênh.\n"
-                "`lock`: Khóa kênh."
-            ),
-            inline=False
-        )
+    async def help_command(self, ctx, *, group: str = None):
+        if not group:
+            embed = discord.Embed(
+                title="📜 HƯỚNG DẪN SỬ DỤNG LỆNH (HELP)",
+                description="Sử dụng cú pháp `k.help <nhóm lệnh>` để xem chi tiết danh sách lệnh.",
+                color=discord.Color.blue()
+            )
+            embed.add_field(
+                name="📂 Các nhóm lệnh khả dụng:",
+                value=(
+                    "• `k.help member`: Nhóm lệnh dành cho tất cả thành viên.\n"
+                    "• `k.help admin`: Nhóm lệnh quản trị điểm số & streak (Chỉ Admin).\n"
+                    "• `k.help set up`: Nhóm lệnh cài đặt phân quyền & kênh (Chỉ Admin)."
+                ),
+                inline=False
+            )
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+            return
 
-        embed.add_field(
-            name="💡 Quy Tắc Điểm Danh",
-            value=(
-                "Làm nhiệm vụ và gửi ảnh.\n"
-                "Mỗi ngày điểm danh nhận **+100 KiPoints**.\n"
-                "Duy trì chuỗi điểm danh từ **ngày thứ 3 trở đi** nhận thêm **+5 KiPoints bonus** mỗi ngày."
-            ),
-            inline=False
-        )
-        
-        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-        await ctx.send(embed=embed)
+        group_clean = group.lower().strip()
+
+        if group_clean in ["member", "mem"]:
+            embed = discord.Embed(
+                title="👤 NHÓM LỆNH THÀNH VIÊN (MEMBER)",
+                description="Các lệnh sử dụng cho tất cả thành viên trong máy chủ:",
+                color=discord.Color.green()
+            )
+            embed.add_field(
+                name="📌 Danh sách lệnh:",
+                value=(
+                    "• `help / h`: Xem hướng dẫn sử dụng lệnh.\n"
+                    "• `rule / r`: Xem quy định & cách tính điểm.\n"
+                    "• `profile / pf [@User]`: Xem hồ sơ nhiệm vụ cá nhân.\n"
+                    "• `top / t [trang]`: Xem bảng xếp hạng KiPoints."
+                ),
+                inline=False
+            )
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+
+        elif group_clean in ["admin", "ad"]:
+            embed = discord.Embed(
+                title="⚙️ NHÓM LỆNH QUẢN TRỊ (ADMIN)",
+                description="🔒 *Chỉ Quản trị viên (Administrator) mới có quyền sử dụng!*",
+                color=discord.Color.red()
+            )
+            embed.add_field(
+                name="📌 Danh sách lệnh:",
+                value=(
+                    "• `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
+                    "• `remove / rm @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
+                    "• `addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
+                    "• `removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
+                    "• `deny / dn @User`: Hủy kết quả điểm danh hôm nay và trừ điểm.\n"
+                    "• `reset / rs @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
+                ),
+                inline=False
+            )
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+
+        elif group_clean in ["set up", "setup", "set_up"]:
+            embed = discord.Embed(
+                title="🛠️ NHÓM LỆNH CÀI ĐẶT (SET UP)",
+                description="🔒 *Chỉ Quản trị viên (Administrator) mới có quyền sử dụng!*",
+                color=discord.Color.orange()
+            )
+            embed.add_field(
+                name="📌 Danh sách lệnh:",
+                value=(
+                    "• `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
+                    "• `allowlist / al`: Xem danh sách phân quyền các kênh hiện tại.\n"
+                    "• `lock`: Khóa kênh làm nhiệm vụ.\n"
+                    "• `unlock`: Mở khóa kênh làm nhiệm vụ."
+                ),
+                inline=False
+            )
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+
+        else:
+            embed = discord.Embed(
+                title="⚠️ NHÓM LỆNH KHÔNG HỢP LỆ",
+                description="Vui lòng chọn 1 trong các nhóm lệnh sau:\n• `k.help member`\n• `k.help admin`\n• `k.help set up`",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
