@@ -209,7 +209,7 @@ class MemberCog(commands.Cog):
             name="📃 . Về lệnh của bot:",
             value=(
                 "- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
-                "- Để biết về tên lệnh, hãy nhập lệnh `help / h` để xem danh sách các lệnh.\n"
+                "- Để biết về tên lệnh, hãy nhập lệnh `help` để xem danh sách các lệnh.\n"
             ),
             inline=False
         )
@@ -249,10 +249,10 @@ class MemberCog(commands.Cog):
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
-                    "• `help / h`: Xem hướng dẫn sử dụng lệnh.\n"
-                    "• `rule / r`: Xem quy định & cách tính điểm.\n"
-                    "• `profile / pf [@User]`: Xem hồ sơ nhiệm vụ cá nhân.\n"
-                    "• `top / t [trang]`: Xem bảng xếp hạng KiPoints."
+                    "• `help`: Xem hướng dẫn sử dụng lệnh.\n"
+                    "• `rule`: Xem quy định & cách tính điểm.\n"
+                    "• `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
+                    "• `top <số trang>`: Xem bảng xếp hạng KiPoints."
                 ),
                 inline=False
             )
@@ -262,18 +262,18 @@ class MemberCog(commands.Cog):
         elif group_clean in ["admin", "ad"]:
             embed = discord.Embed(
                 title="⚙️ NHÓM LỆNH QUẢN TRỊ (ADMIN)",
-                description="🔒 *Chỉ Quản trị viên (Administrator) mới có quyền sử dụng!*",
+                description="",
                 color=discord.Color.red()
             )
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
                     "• `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
-                    "• `remove / rm @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
-                    "• `addstreak / adds @User <số ngày>`: Cộng chuỗi streak.\n"
-                    "• `removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
-                    "• `deny / dn @User`: Hủy kết quả điểm danh hôm nay và trừ điểm.\n"
-                    "• `reset / rs @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
+                    "• `remove @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
+                    "• `addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
+                    "• `removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
+                    "• `deny @User`: Hủy kết quả điểm danh hôm nay và trừ điểm.\n"
+                    "• `reset @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
                 ),
                 inline=False
             )
@@ -283,14 +283,14 @@ class MemberCog(commands.Cog):
         elif group_clean in ["set up", "setup", "set_up"]:
             embed = discord.Embed(
                 title="🛠️ NHÓM LỆNH CÀI ĐẶT (SET UP)",
-                description="🔒 *Chỉ Quản trị viên (Administrator) mới có quyền sử dụng!*",
+                description="",
                 color=discord.Color.orange()
             )
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
                     "• `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
-                    "• `allowlist / al`: Xem danh sách phân quyền các kênh hiện tại.\n"
+                    "• `allowlist`: Xem danh sách phân quyền các kênh hiện tại.\n"
                     "• `lock`: Khóa kênh làm nhiệm vụ.\n"
                     "• `unlock`: Mở khóa kênh làm nhiệm vụ."
                 ),
