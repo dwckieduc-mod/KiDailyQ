@@ -22,7 +22,10 @@ async def restrict_channel(ctx):
     if ctx.guild and ctx.author.guild_permissions.administrator: 
         return True
     allowed_channels = await load_allowed_channels()
-    return allowed_channels.get(str(ctx.channel.id), False) is True
+    ch_perms = allowed_channels.get(str(ctx.channel.id), {})
+    if isinstance(ch_perms, bool):
+        return ch_perms
+    return ch_perms.get("command", False) is True
 
 @bot.event
 async def on_command_error(ctx, error):
