@@ -12,14 +12,24 @@ class AdminCog(commands.Cog):
 
     @commands.command(name="allow")
     @commands.has_permissions(administrator=True)
-    async def allow(self, ctx, channel_input: str, status: str):
+    async def allow(self, ctx, channel_input: str, perm_type: str, status: str):
+        perm_type_clean = perm_type.lower()
+        if perm_type_clean not in ["image", "command"]:
+            embed = discord.Embed(
+                title="⚠️ QUYỀN KHÔNG HỢP LỆ",
+                description="Vui lòng chọn loại quyền là `image` (gửi ảnh điểm danh) hoặc `command` (dùng lệnh).\n**Cú pháp:** `k.allow <#kênh/ID> <image/command> <true/false>`",
+                color=discord.Color.gold()
+            )
+            await ctx.send(embed=embed)
+            return
+
         is_true = status.lower() in ["true", "1", "yes", "on"]
         is_false = status.lower() in ["false", "0", "no", "off"]
 
         if not (is_true or is_false):
             embed = discord.Embed(
                 title="⚠️ TRẠNG THÁI KHÔNG HỢP LỆ",
-                description="Vui lòng nhập `true` (cho phép) hoặc `false` (từ chối/xóa).\n**Ví dụ:** `k.allow <id kênh> true`",
+                description="Vui lòng nhập `true` (cho phép) hoặc `false` (tắt/xóa).\n**Ví dụ:** `k.allow #kênh image true`",
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
@@ -36,30 +46,38 @@ class AdminCog(commands.Cog):
             return
 
         data = await load_allowed_channels()
+        
+        ch_info = data.get(clean_id, {})
+        if isinstance(ch_info, bool):
+            ch_info = {"command": ch_info, "image": False}
+
+        type_label = "Gửi ảnh điểm danh (image)" if perm_type_clean == "image" else "Dùng lệnh bot (command)"
 
         if is_true:
-            data[clean_id] = True
+            ch_info[perm_type_clean] = True
+            data[clean_id] = ch_info
             await save_allowed_channels(data)
+            
             embed = discord.Embed(
                 title="✅ CẤP QUYỀN KÊNH THÀNH CÔNG",
-                description=f"Kênh <#{clean_id}> **đã được phép** sử dụng lệnh bot!\nTrạng thái: `True`",
+                description=f"Kênh <#{clean_id}> đã được **bật** quyền **{type_label}**!",
                 color=discord.Color.green()
             )
         else:
-            if clean_id in data:
-                del data[clean_id]
-                await save_allowed_channels(data)
-                embed = discord.Embed(
-                    title="🗑️ ĐÃ XÓA KÊNH KHỎI HỆ THỐNG",
-                    description=f"Kênh <#{clean_id}> đã bị **từ chối và xóa khỏi** file `channel_allow.json`!",
-                    color=discord.Color.red()
-                )
+            ch_info[perm_type_clean] = False
+            if not ch_info.get("image") and not ch_info.get("command"):
+                if clean_id in data:
+                    del data[clean_id]
             else:
-                embed = discord.Embed(
-                    title="⚠️ KÊNH CHƯA TỒN TẠI",
-                    description=f"Kênh <#{clean_id}> vốn chưa có trong danh sách được cấp quyền.",
-                    color=discord.Color.gold()
-                )
+                data[clean_id] = ch_info
+                
+            await save_allowed_channels(data)
+            
+            embed = discord.Embed(
+                title="🗑️ TẮT QUYỀN KÊNH THÀNH CÔNG",
+                description=f"Kênh <#{clean_id}> đã bị **tắt** quyền **{type_label}**!",
+                color=discord.Color.red()
+            )
 
         await ctx.send(embed=embed)
 
@@ -69,8 +87,8 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(
-                title="⚠️ SAI CÚ PHÁP LỆNH CHANNEL_ALLOW",
-                description="Vui lòng nhập đúng:\n• `k.allow <id kênh> true` (Cấp quyền)\n• `k.allow #kênh false` (Xóa khỏi danh sách)",
+                title="⚠️ SAI CÚ PHÁP LỆNH ALLOW",
+                description="Vui lòng nhập đúng cú pháp:\n`k.allow <#kênh/ID> <image/command> <true/false>`\n\n**Ví dụ:**\n• `k.allow #diem-danh image true` (Cho phép gửi ảnh điểm danh)\n• `k.allow #bot-commands command true` (Cho phép dùng lệnh bot)",
                 color=discord.Color.gold()
             )
         else:
@@ -83,19 +101,23 @@ class AdminCog(commands.Cog):
         data = await load_allowed_channels()
         if not data:
             embed = discord.Embed(
-                title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
-                description="Hiện chưa có kênh nào được cấp quyền!\nQuản trị viên hãy dùng lệnh `k.allow #kênh True` để thêm.",
+                title="📋 DANH SÁCH KÊNH ĐƯỢC CẤP QUYỀN",
+                description="Hiện chưa có kênh nào được cấp quyền!\nQuản trị viên hãy dùng lệnh:\n`k.allow #kênh image true` hoặc `k.allow #kênh command true`",
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
             return
 
         channel_list_str = ""
-        for idx, (cid, status) in enumerate(data.items(), start=1):
-            channel_list_str += f"**{idx}.** <#{cid}> (Được phép: `{status}`)\n"
+        for idx, (cid, perms) in enumerate(data.items(), start=1):
+            if isinstance(perms, bool):
+                perms = {"command": perms, "image": False}
+            img_status = "✅ Cho phép" if perms.get("image") else "❌ Tắt"
+            cmd_status = "✅ Cho phép" if perms.get("command") else "❌ Tắt"
+            channel_list_str += f"**{idx}.** <#{cid}>\n   • 🖼️ Điểm danh (`image`): {img_status}\n   • 💬 Dùng lệnh (`command`): {cmd_status}\n\n"
 
         embed = discord.Embed(
-            title="📋 DANH SÁCH KÊNH ĐƯỢC PHÉP DÙNG LỆNH",
+            title="📋 DANH SÁCH KÊNH ĐƯỢC CẤP QUYỀN",
             description=channel_list_str,
             color=discord.Color.blue()
         )
@@ -370,4 +392,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-                  
+                      
