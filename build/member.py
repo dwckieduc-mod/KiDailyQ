@@ -152,9 +152,9 @@ class MemberCog(commands.Cog):
         message = await ctx.send(embed=embed, view=view)
         view.message = message
 
-    @commands.command(name="rule", aliases=["r"])
+        @commands.command(name="rule", aliases=["r"])
     async def rule_command(self, ctx):
-        allowed_data = await load_allowed_channels()
+        allowed_data = await load_allowed_channels(self.bot)
         image_channels = []
         
         if allowed_data:
@@ -166,7 +166,7 @@ class MemberCog(commands.Cog):
             channels_str = ", ".join(image_channels)
         else:
             channels_str = "*kênh chưa được thiết lập*"
-
+            
         embed = discord.Embed(
             title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
             description="",
