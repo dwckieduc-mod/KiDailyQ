@@ -41,7 +41,7 @@ async def on_ready():
 async def main():
     keep_alive()
     async with bot:
-        await bot.load_extension("build.lock")
+        await bot.load_extension("build.set_up")
         await bot.load_extension("build.check")
         await bot.load_extension("build.member")
         await bot.load_extension("build.admin")
