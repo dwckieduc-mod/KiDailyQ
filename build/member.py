@@ -186,8 +186,8 @@ class MemberCog(commands.Cog):
             name="📊 . Cách tính điểm:",
             value=(
                 "- Khi bạn gửi nội dung vào, bot sẽ thông báo và thả biểu cảm với các emoji sau:\n"
-                "- -  ✅ Hoàn thành.\n"
-                "- - ❌ Đã làm nhiệm vụ trước đó rồi.\n"
+                "- - ✅ Hoàn thành.\n"
+                "- - ❌ Đã làm nhiệm vụ trước đó.\n"
                 "- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
                 "- Hoàn thành nhiệm vụ sẽ được cộng **100 KiPoints**.\n"
                 "- Khi đạt điều kiện streak **( ≥ 3 ngày)** thì bạn sẽ được cộng thêm **5 KiPoints** thưởng giữ chuỗi.\n"
@@ -228,9 +228,9 @@ class MemberCog(commands.Cog):
             embed.add_field(
                 name="📂 Các nhóm lệnh khả dụng:",
                 value=(
-                    "• `k.help member`: Nhóm lệnh dành cho tất cả thành viên.\n"
-                    "• `k.help admin`: Nhóm lệnh quản trị điểm số & streak (Chỉ Admin).\n"
-                    "• `k.help set up`: Nhóm lệnh cài đặt phân quyền & kênh (Chỉ Admin)."
+                    "- `k.help member`: Nhóm lệnh dành cho tất cả thành viên.\n"
+                    "- `k.help admin`: Nhóm lệnh quản trị điểm số & streak (Chỉ Admin).\n"
+                    "- `k.help set up`: Nhóm lệnh cài đặt phân quyền & kênh (Chỉ Admin)."
                 ),
                 inline=False
             )
