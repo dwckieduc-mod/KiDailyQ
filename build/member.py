@@ -200,7 +200,7 @@ class MemberCog(commands.Cog):
             name="🚫 . Về hành vi sai phạm:",
             value=(
                 "- Làm sai nhiệm vụ / nội dung không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
-                "- Hình ảnh vẫn phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý.\n"
+                "- Các nội dung phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý.\n"
             ),
             inline=False
         )
