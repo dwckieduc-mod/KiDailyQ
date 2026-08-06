@@ -164,7 +164,7 @@ class MemberCog(commands.Cog):
             name="📖 . Hình thức làm Daily Quest:",
             value=(
                 "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-                f"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào <#{DAILY_CHANNEL_ID}> để làm minh chứng.\n"
+                "- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào kênh được chỉ định để làm minh chứng.\n"
             ),
             inline=False
         )
@@ -232,8 +232,8 @@ class MemberCog(commands.Cog):
                 "`removestreak / rms @User <số ngày>`: Trừ chuỗi streak.\n"
                 "`reset / rs @User/all`: Đặt lại toàn bộ dữ liệu thành viên/tất cả.\n"
                 "`deny / dn @User`: Hủy kết quả và làm lại.\n"
-                "`allow <channel id> true/false`: Chỉ định kênh mà member được dùng lệnh.\n"
-                "`allowlist / al`: Xem danh sách các kênh được cấp quyền.\n"
+                "`allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh.\n"
+                "`allowlist / al`: Xem danh sách phân quyền các kênh.\n"
                 "`unlock`: Mở kênh.\n"
                 "`lock`: Khóa kênh."
             ),
@@ -255,4 +255,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-    
+        
