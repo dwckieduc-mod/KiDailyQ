@@ -177,7 +177,7 @@ class MemberCog(commands.Cog):
             name="📖 . Hình thức làm Daily Quest:",
             value=(
                 "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-                f"- Mọi người sẽ làm nhiệm vụ và gửi một bức ảnh vào {channels_str} để làm minh chứng.\n"
+                f"- Mọi người sẽ làm nhiệm vụ và gửi vào {channels_str} để điểm danh.\n"
             ),
             inline=False
         )
@@ -185,7 +185,7 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="📊 . Cách tính điểm:",
             value=(
-                "- Khi bạn gửi ảnh thì được bot thông báo và thả biểu cảm trên ảnh với các emoji sau:\n"
+                "- Khi bạn gửi nội dung vào, bot sẽ thông báo và thả biểu cảm với các emoji sau:\n"
                 "- -  ✅ Hoàn thành.\n"
                 "- - ❌ Đã làm nhiệm vụ trước đó rồi.\n"
                 "- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
@@ -199,7 +199,7 @@ class MemberCog(commands.Cog):
         embed.add_field(
             name="🚫 . Về hành vi sai phạm:",
             value=(
-                "- Làm sai nhiệm vụ / hình ảnh không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
+                "- Làm sai nhiệm vụ / nội dung không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
                 "- Hình ảnh vẫn phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý.\n"
             ),
             inline=False
@@ -249,10 +249,10 @@ class MemberCog(commands.Cog):
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
-                    "• `help`: Xem hướng dẫn sử dụng lệnh.\n"
-                    "• `rule`: Xem quy định & cách tính điểm.\n"
-                    "• `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
-                    "• `top <số trang>`: Xem bảng xếp hạng KiPoints."
+                    "- `help`: Xem hướng dẫn sử dụng lệnh.\n"
+                    "- `rule`: Xem quy định & cách tính điểm.\n"
+                    "- `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
+                    "- `top <số trang>`: Xem bảng xếp hạng KiPoints."
                 ),
                 inline=False
             )
@@ -268,12 +268,12 @@ class MemberCog(commands.Cog):
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
-                    "• `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
-                    "• `remove @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
-                    "• `addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
-                    "• `removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
-                    "• `deny @User`: Hủy kết quả điểm danh hôm nay và trừ điểm.\n"
-                    "• `reset @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
+                    "- `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
+                    "- `remove @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
+                    "- `addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
+                    "- `removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
+                    "- `deny @User`: Hủy kết quả điểm danh hôm nay.\n"
+                    "- `reset @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
                 ),
                 inline=False
             )
@@ -289,10 +289,10 @@ class MemberCog(commands.Cog):
             embed.add_field(
                 name="📌 Danh sách lệnh:",
                 value=(
-                    "• `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
-                    "• `allowlist`: Xem danh sách phân quyền các kênh hiện tại.\n"
-                    "• `lock`: Khóa kênh làm nhiệm vụ.\n"
-                    "• `unlock`: Mở khóa kênh làm nhiệm vụ."
+                    "- `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
+                    "- `allowlist`: Xem danh sách phân quyền các kênh hiện tại.\n"
+                    "- `lock`: Khóa kênh làm nhiệm vụ.\n"
+                    "- `unlock`: Mở khóa kênh làm nhiệm vụ."
                 ),
                 inline=False
             )
