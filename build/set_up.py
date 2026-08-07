@@ -7,6 +7,40 @@ from database import load_allowed_channels, save_allowed_channels
 # Giờ Việt Nam (UTC+7)
 VN_TZ = timezone(timedelta(hours=7))
 
+# ==================== VIEW TẠO NÚT MỞ KHÓA ====================
+class UnlockView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+
+    @discord.ui.button(label="🔓 Mở khóa kênh", style=discord.ButtonStyle.green, custom_id="unlock_channel_button")
+    async def unlock_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+        # Kiểm tra quyền Admin của người bấm nút
+        if not interaction.user.guild_permissions.administrator:
+            return await interaction.response.send_message(
+                "❌ Chỉ Quản trị viên (Admin) mới có thể sử dụng nút mở khóa này!", 
+                ephemeral=True
+            )
+
+        channel = interaction.channel
+        overwrite = channel.overwrites_for(interaction.guild.default_role)
+        overwrite.send_messages = True
+        await channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
+
+        # Vô hiệu hóa nút sau khi bấm thành công
+        button.disabled = True
+        button.label = "🔓 Kênh đã mở khóa"
+        button.style = discord.ButtonStyle.secondary
+        await interaction.response.edit_message(view=self)
+
+        # Gửi thông báo mở khóa thành công
+        embed = discord.Embed(
+            title="🔓 ĐÃ MỞ KHÓA KÊNH",
+            description=f"Kênh {channel.mention} đã được mở khóa bởi {interaction.user.mention}.",
+            color=discord.Color.green()
+        )
+        await interaction.followup.send(embed=embed)
+
+
 class SetupCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
@@ -58,7 +92,8 @@ class SetupCog(commands.Cog):
                             description="Đã hết thời gian làm Daily Quest hôm nay! Kênh đã được khóa tự động.",
                             color=discord.Color.red()
                         )
-                        await channel.send(embed=embed)
+                        # Đính kèm ô nút mở khóa
+                        await channel.send(embed=embed, view=UnlockView())
                 except Exception as e:
                     print(f"❌ Lỗi khi tự động khóa kênh {cid}: {e}")
 
@@ -164,7 +199,8 @@ class SetupCog(commands.Cog):
         overwrite.send_messages = False
         await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
         embed = discord.Embed(title="🔒 ĐÃ KHÓA KÊNH", description=f"Kênh {ctx.channel.mention} đã bị khóa gửi tin nhắn.", color=discord.Color.red())
-        await ctx.send(embed=embed)
+        # Đính kèm ô nút mở khóa
+        await ctx.send(embed=embed, view=UnlockView())
 
     @commands.command(name="unlock")
     @commands.has_permissions(administrator=True)
@@ -177,4 +213,4 @@ class SetupCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(SetupCog(bot))
-    
+        
