@@ -34,8 +34,8 @@ class UnlockView(discord.ui.View):
 
         # Gửi thông báo mở khóa thành công
         embed = discord.Embed(
-            title="🔓 ĐÃ MỞ KHÓA KÊNH",
-            description=f"Kênh {channel.mention} đã được mở khóa bởi {interaction.user.mention}.",
+            title="🔓 KÊNH ĐÃ MỞ",
+            description=f"Bắt đầu làm nhiệm vụ nào!",
             color=discord.Color.green()
         )
         await interaction.followup.send(embed=embed)
@@ -88,8 +88,8 @@ class SetupCog(commands.Cog):
                         await channel.set_permissions(channel.guild.default_role, overwrite=overwrite)
                         
                         embed = discord.Embed(
-                            title="🔒 ĐÃ TỰ ĐỘNG KHÓA KÊNH",
-                            description="Đã hết thời gian làm Daily Quest hôm nay! Kênh đã được khóa tự động.",
+                            title="🔒 ĐÃ KHÓA KÊNH",
+                            description="Đã hết thời gian làm Daily Quest hôm nay!\nHãy đợi tới khi có Daily Quest mới.",
                             color=discord.Color.red()
                         )
                         # Đính kèm ô nút mở khóa
@@ -198,7 +198,7 @@ class SetupCog(commands.Cog):
         overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = False
         await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-        embed = discord.Embed(title="🔒 ĐÃ KHÓA KÊNH", description=f"Kênh {ctx.channel.mention} đã bị khóa gửi tin nhắn.", color=discord.Color.red())
+        embed = discord.Embed(title="🔒 ĐÃ KHÓA KÊNH", description=f"Đã tạm dừng nhiệm vụ", color=discord.Color.red())
         # Đính kèm ô nút mở khóa
         await ctx.send(embed=embed, view=UnlockView())
 
@@ -208,7 +208,7 @@ class SetupCog(commands.Cog):
         overwrite = ctx.channel.overwrites_for(ctx.guild.default_role)
         overwrite.send_messages = True
         await ctx.channel.set_permissions(ctx.guild.default_role, overwrite=overwrite)
-        embed = discord.Embed(title="🔓 ĐÃ MỞ KHÓA KÊNH", description=f"Kênh {ctx.channel.mention} đã được mở khóa gửi tin nhắn.", color=discord.Color.green())
+        embed = discord.Embed(title="🔓 KÊNH ĐÃ MỞ", description=f"Bắt đầu làm nhiệm vụ nào!", color=discord.Color.green())
         await ctx.send(embed=embed)
 
 async def setup(bot):
