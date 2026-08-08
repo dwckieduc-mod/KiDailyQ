@@ -84,10 +84,11 @@ class CheckCog(commands.Cog):
         data[user_id] = user_info
         await save_data(data)
 
-        # Thả cảm xúc thông báo
+        # Bot thả các cảm xúc (Bao gồm cả 🔄 để Admin tiện nhấn Deny)
         await message.add_reaction("✅")
         if bonus_points > 0:
             await message.add_reaction("🔥")
+        await message.add_reaction("🔄")
 
         # Gửi thông báo thành công
         embed = discord.Embed(
@@ -103,7 +104,7 @@ class CheckCog(commands.Cog):
         embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(new_streak)}**", inline=True)
         embed.add_field(name="💳 Tổng KiPoints", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
 
-        await message.channel.send(embed=embed, deleted_after=3)
+        await message.channel.send(embed=embed, delete_after=3)
 
     # ==================== 2. ADMIN THẢ EMOJI 🔄 ĐỂ DENY (TỪ CHỐI) ====================
     @commands.Cog.listener()
@@ -181,11 +182,18 @@ class CheckCog(commands.Cog):
         data[user_id] = user_info
         await save_data(data)
 
-        # Gỡ cảm xúc ✅ và 🔥 của Bot trên tin nhắn, thả cảm xúc ❌
+        # Xóa TOÀN BỘ emoji trên tin nhắn, sau đó thêm emoji ❌
         try:
+            await message.clear_reactions()
+        except Exception:
+            # Dự phòng trường hợp Bot thiếu quyền Manage Messages thì chỉ gỡ emoji của Bot
             for reaction in message.reactions:
-                if str(reaction.emoji) in ["✅", "🔥"]:
+                try:
                     await reaction.remove(self.bot.user)
+                except Exception:
+                    pass
+
+        try:
             await message.add_reaction("❌")
         except Exception:
             pass
