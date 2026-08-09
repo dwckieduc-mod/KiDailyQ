@@ -156,16 +156,20 @@ class MemberCog(commands.Cog):
     async def rule_command(self, ctx):
         allowed_data = await load_allowed_channels(self.bot)
         image_channels = []
+        command_channels = []
         
         if allowed_data:
             for cid, perms in allowed_data.items():
-                if isinstance(perms, dict) and perms.get("image"):
-                    image_channels.append(f"<#{cid}>")
+                if isinstance(perms, dict):
+                    if perms.get("image"):
+                        image_channels.append(f"<#{cid}>")
+                    if perms.get("command"):
+                        command_channels.append(f"<#{cid}>")
+                elif isinstance(perms, bool) and perms:
+                    command_channels.append(f"<#{cid}>")
 
-        if image_channels:
-            channels_str = ", ".join(image_channels)
-        else:
-            channels_str = "*kênh chưa được thiết lập*"
+        image_channels_str = ", ".join(image_channels) if image_channels else "*kênh chưa được thiết lập*"
+        command_channels_str = ", ".join(command_channels) if command_channels else "*kênh chưa được thiết lập*"
             
         embed = discord.Embed(
             title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
@@ -177,7 +181,7 @@ class MemberCog(commands.Cog):
             name="📖 . Hình thức làm Daily Quest:",
             value=(
                 "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-                f"- Mọi người sẽ làm nhiệm vụ và gửi vào {channels_str} để điểm danh.\n"
+                f"- Mọi người sẽ làm nhiệm vụ và gửi vào {image_channels_str} để điểm danh.\n"
             ),
             inline=False
         )
@@ -209,6 +213,7 @@ class MemberCog(commands.Cog):
             name="📃 . Về lệnh của bot:",
             value=(
                 "- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
+                f"- Kênh được phép dùng lệnh: {command_channels_str}\n"
                 "- Để biết về tên lệnh, hãy nhập lệnh `help` để xem danh sách các lệnh.\n"
             ),
             inline=False
@@ -309,4 +314,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-            
+        
