@@ -213,7 +213,7 @@ class MemberCog(commands.Cog):
             name="📃 . Về lệnh của bot:",
             value=(
                 "- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
-                f"- Kênh được phép dùng lệnh: {command_channels_str}\n"
+                f"- Kênh được phép dùng lệnh: <#1427911211424678019>\n"
                 "- Để biết về tên lệnh, hãy nhập lệnh `help` để xem danh sách các lệnh.\n"
             ),
             inline=False
