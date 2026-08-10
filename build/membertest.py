@@ -39,7 +39,7 @@ class LeaderboardView(discord.ui.View):
             
             # XỬ LÝ LỖI HIỂN THỊ ID THÔ: Lấy tên hiển thị trong Server
             member = self.guild.get_member(int(user_id)) if self.guild and user_id.isdigit() else None
-            user_display = f"**@{member.display_name}**" if member else f"<@{user_id}>"
+            user_display = f"{member.display_name}" if member else f"<@{user_id}>"
 
             if index == 1:
                 medal = "🥇"
@@ -50,7 +50,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 medal = f"**#{index}**"
                 
-            description += f"{medal} {user_display} - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
+            description += f"{medal} {user_display}   -   {format_points(points)} KiPoints  -  {streak_display}\n"
 
         embed.description = description
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
