@@ -6,10 +6,11 @@ from database import load_data, get_streak_text, format_points, load_allowed_cha
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
 class LeaderboardView(discord.ui.View):
-    def __init__(self, data, author_id, per_page=10):
+    def __init__(self, data, author_id, guild, per_page=10):
         super().__init__(timeout=60)
         self.data = data
         self.author_id = author_id
+        self.guild = guild
         self.per_page = per_page
         self.current_page = 1
         self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
@@ -36,6 +37,10 @@ class LeaderboardView(discord.ui.View):
             streak = info.get("streak", 0)
             streak_display = get_streak_text(streak)
             
+            # XỬ LÝ LỖI HIỂN THỊ ID THÔ: Lấy tên hiển thị trong Server
+            member = self.guild.get_member(int(user_id)) if self.guild and user_id.isdigit() else None
+            user_display = f"**@{member.display_name}**" if member else f"<@{user_id}>"
+
             if index == 1:
                 medal = "🥇"
             elif index == 2:
@@ -45,7 +50,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 medal = f"**#{index}**"
                 
-            description += f"{medal} <@{user_id}> - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
+            description += f"{medal} {user_display} - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
 
         embed.description = description
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
@@ -144,7 +149,7 @@ class MemberCog(commands.Cog):
             await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
             return
 
-        view = LeaderboardView(sorted_users, ctx.author.id, per_page=per_page)
+        view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
         view.current_page = page
         view.update_buttons()
         
@@ -330,4 +335,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-          
+            
