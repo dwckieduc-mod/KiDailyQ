@@ -3,9 +3,15 @@ import json
 import urllib.request
 import asyncio
 import discord
+from discord.ext import tasks
 
 GIST_ID = os.environ.get("GIST_ID")
 GITHUB_TOKEN = os.environ.get("GITHUB_TOKEN")
+
+# ==================== BỘ NHỚ TẠM (RAM CACHE) ====================
+_DATA_CACHE = None
+_IS_DIRTY = False
+_AUTO_SAVE_TASK_STARTED = False
 
 def _load_data_sync():
     if not GITHUB_TOKEN or not GIST_ID:
@@ -34,7 +40,10 @@ def _load_data_sync():
         return {}
 
 async def load_data():
-    return await asyncio.to_thread(_load_data_sync)
+    global _DATA_CACHE
+    if _DATA_CACHE is None:
+        _DATA_CACHE = await asyncio.to_thread(_load_data_sync)
+    return _DATA_CACHE
 
 def _save_data_sync(data):
     if not GITHUB_TOKEN or not GIST_ID:
@@ -63,8 +72,25 @@ def _save_data_sync(data):
         pass
 
 async def save_data(data):
-    await asyncio.to_thread(_save_data_sync, data)
+    global _DATA_CACHE, _IS_DIRTY
+    _DATA_CACHE = data
+    _IS_DIRTY = True  # Đánh dấu dữ liệu đã thay đổi để lưu sau 15 giây
 
+# ==================== VÒNG LẶP TỰ ĐỘNG LƯU MỖI 15 GIÂY ====================
+@tasks.loop(seconds=15)
+async def _auto_save_loop():
+    global _IS_DIRTY, _DATA_CACHE
+    if _IS_DIRTY and _DATA_CACHE is not None:
+        await asyncio.to_thread(_save_data_sync, _DATA_CACHE)
+        _IS_DIRTY = False
+
+def start_auto_save_loop(bot=None):
+    global _AUTO_SAVE_TASK_STARTED
+    if not _AUTO_SAVE_TASK_STARTED:
+        _auto_save_loop.start()
+        _AUTO_SAVE_TASK_STARTED = True
+
+# ==================== PHẦN XỬ LÝ KÊNH ĐƯỢC PHÉP ====================
 def _load_allowed_channels_sync():
     if not GITHUB_TOKEN or not GIST_ID:
         return {}
@@ -93,7 +119,6 @@ def _load_allowed_channels_sync():
 async def load_allowed_channels(bot=None):
     data = await asyncio.to_thread(_load_allowed_channels_sync)
     
-    # Nếu truyền bot vào, kiểm tra tính tồn tại của các kênh
     if bot and data:
         cleaned_data = {}
         has_deleted = False
@@ -167,4 +192,4 @@ def format_points(points: int, shorten: bool = False) -> str:
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
     return f"{points:,}".replace(",", ".")
-    
+            
