@@ -27,11 +27,34 @@ class LeaderboardView(discord.ui.View):
             color=discord.Color.gold()
         )
         
+        # Tìm hạng hiện tại của người dùng lệnh
+        user_rank_str = "Chưa xếp hạng"
+        for idx, (uid, info) in enumerate(self.data, start=1):
+            if str(uid) == str(self.author_id):
+                if idx == 1:
+                    user_rank_str = "🥇 Top 1"
+                elif idx == 2:
+                    user_rank_str = "🥈 Top 2"
+                elif idx == 3:
+                    user_rank_str = "🥉 Top 3"
+                else:
+                    user_rank_str = f"#{idx}"
+                break
+
+        author_member = self.guild.get_member(int(self.author_id)) if self.guild and str(self.author_id).isdigit() else None
+        author_display = f"{author_member.display_name}" if author_member else f"<@{self.author_id}>"
+
+        # Khởi tạo phần hiển thị thứ hạng cá nhân và tiêu đề Bảng xếp hạng
+        description = (
+            f"📌 **Hạng hiện tại của bạn:**\n"
+            f"{user_rank_str} **{author_display}**\n\n"
+            f"📊 **Bảng xếp hạng:**\n"
+        )
+        
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
         
-        description = ""
         for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
             points = info.get("points", 0)
             streak = info.get("streak", 0)
@@ -50,7 +73,7 @@ class LeaderboardView(discord.ui.View):
             else:
                 medal = f"#{index}"
                 
-            description += f"{medal} **{user_display}**\n`»{format_points(points)} KiPoints  -  {streak_display}`\n"
+            description += f"## {medal} **{user_display}**\n`»{format_points(points)} KiPoints`\n`{streak_display}`\n"
 
         embed.description = description
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
