@@ -24,7 +24,7 @@ class LeaderboardView(discord.ui.View):
     def create_embed(self):
         guild_name = self.guild.name if self.guild else "Server"
         
-        # 1. Tìm thứ hạng & điểm của người gõ lệnh
+        # 1. Tìm thứ hạng & điểm cá nhân của người gọi lệnh 🎯
         author_id_str = str(self.author_id)
         user_rank = "N/A"
         user_points = 0
@@ -40,45 +40,31 @@ class LeaderboardView(discord.ui.View):
             color=discord.Color.from_rgb(88, 101, 242)
         )
         
-        # Header thống kê cá nhân
-        header_text = (
+        # 2. Khung thống kê cá nhân kiểu Tatsu 💳
+        description = (
             "`Score All-time Rankings`\n\n"
             "💬 **Your Rank**\n"
-            f"You are rank `{user_rank}` on this server\n"
-            f"with a total of `{format_points(user_points)}` 💬 **Server Score**\n\n"
+            f"You are rank **{user_rank}** on this server\n"
+            f"with a total of **{format_points(user_points)}** 💬 **Server Score**\n\n"
         )
         
-        # 2. Tạo bảng dồn lề Trái - Phải bằng Codeblock
+        # 3. Danh sách thành viên từng dòng chuẩn Markdown 📜
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
         
-        LINE_WIDTH = 42  # Độ rộng khung chuẩn Discord (Mobile & PC)
-        lines = []
-
         for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
             points = info.get("points", 0)
             streak = info.get("streak", 0)
-            streak_text = f"🔥{streak}d" if streak >= 3 else f"🧊{max(0, streak)}d"
+            streak_text = f"🔥 {streak}d" if streak >= 3 else f"🧊 {max(0, streak)}d"
             
-            # Lấy tên hiển thị
             member = self.guild.get_member(int(user_id)) if self.guild and user_id.isdigit() else None
             user_name = member.display_name if member else f"User {user_id}"
 
-            # Cắt ngắn tên nếu quá dài để tránh vỡ khung
-            max_name_len = 15
-            clean_name = user_name[:max_name_len-1] + "…" if len(user_name) > max_name_len else user_name
+            # Định dạng hàng kiểu Tatsu
+            description += f"`#{index}` · **{user_name}** — 💬 `{format_points(points)}` *({streak_text})*\n"
 
-            # Cột trái (Hạng + Tên) & Cột phải (Điểm + Streak)
-            left_part = f"#{index:<2} {clean_name}"
-            right_part = f"{format_points(points)} pts ({streak_text})"
-
-            # Tính toán số khoảng trắng để đẩy cột phải về sát góc
-            spaces_needed = max(2, LINE_WIDTH - len(left_part) - len(right_part))
-            lines.append(f"{left_part}{' ' * spaces_needed}{right_part}")
-
-        board_codeblock = "```text\n" + "\n".join(lines) + "\n```"
-        embed.description = header_text + board_codeblock
+        embed.description = description
         
         next_p = self.current_page + 1 if self.current_page < self.total_pages else self.total_pages
         embed.set_footer(text=f"Page {self.current_page} • Type k.top {next_p} to go to page {next_p} of the leaderboard")
