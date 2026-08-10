@@ -21,6 +21,9 @@ class UnlockView(discord.ui.View):
                 ephemeral=True
             )
 
+        # PHẢN HỒI TỨC THÌ CHO DISCORD (FIX LỖI CHẬM PHẢN HỒI / TIMEOUT 3S)
+        await interaction.response.defer()
+
         channel = interaction.channel
         overwrite = channel.overwrites_for(interaction.guild.default_role)
         overwrite.send_messages = True
@@ -30,7 +33,7 @@ class UnlockView(discord.ui.View):
         button.disabled = True
         button.label = "🔓 Kênh đã mở khóa"
         button.style = discord.ButtonStyle.secondary
-        await interaction.response.edit_message(view=self)
+        await interaction.message.edit(view=self)
 
         # Gửi thông báo mở khóa thành công
         embed = discord.Embed(
@@ -46,6 +49,10 @@ class SetupCog(commands.Cog):
         self.bot = bot
         # Kích hoạt vòng lặp khóa tự động
         self.auto_lock_channel.start()
+
+    async def cog_load(self):
+        # Đăng ký View cố định để nút mở khóa hoạt động bình thường kể cả sau khi Bot khởi động lại
+        self.bot.add_view(UnlockView())
 
     def cog_unload(self):
         self.auto_lock_channel.cancel()
