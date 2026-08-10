@@ -22,38 +22,50 @@ class LeaderboardView(discord.ui.View):
         self.children[1].disabled = (self.current_page == self.total_pages)
 
     def create_embed(self):
+        guild_name = self.guild.name if self.guild else "Server"
+        
+        # 1. Tìm thứ hạng & điểm của người gõ lệnh
+        author_id_str = str(self.author_id)
+        user_rank = "N/A"
+        user_points = 0
+        
+        for idx, (uid, info) in enumerate(self.data, start=1):
+            if uid == author_id_str:
+                user_rank = f"#{idx}"
+                user_points = info.get("points", 0)
+                break
+
         embed = discord.Embed(
-            title="🏆 BẢNG XẾP HẠNG KIPOINTS 🏆",
-            color=discord.Color.gold()
+            title=guild_name,
+            color=discord.Color.from_rgb(88, 101, 242)
         )
         
+        # Header thống kê cá nhân theo giao diện mẫu
+        description = (
+            "`Score All-time Rankings`\n\n"
+            "💪 **Your Rank**\n"
+            f"You are rank `{user_rank}` on this server\n"
+            f"with a total of `{format_points(user_points)}` 💪 **Server Score**\n\n"
+        )
+        
+        # 2. Tạo danh sách thành viên theo trang
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
         
-        description = ""
         for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
             points = info.get("points", 0)
-            streak = info.get("streak", 0)
-            streak_display = get_streak_text(streak)
             
-            # XỬ LÝ LỖI HIỂN THỊ ID THÔ: Lấy tên hiển thị trong Server
             member = self.guild.get_member(int(user_id)) if self.guild and user_id.isdigit() else None
-            user_display = f"**@{member.display_name}**" if member else f"<@{user_id}>"
+            user_name = member.display_name if member else f"User {user_id}"
 
-            if index == 1:
-                medal = "🥇"
-            elif index == 2:
-                medal = "🥈"
-            elif index == 3:
-                medal = "🥉"
-            else:
-                medal = f"**#{index}**"
-                
-            description += f"{medal} {user_display} - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
+            rank_badge = f"`#{index}`"
+            description += f"> {rank_badge} {user_name} · 💪 `{format_points(points)}`\n"
 
         embed.description = description
-        embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
+        
+        next_p = self.current_page + 1 if self.current_page < self.total_pages else self.total_pages
+        embed.set_footer(text=f"Page {self.current_page} • Type k.top {next_p} to go to page {next_p} of the leaderboard")
         return embed
 
     @discord.ui.button(label="◀ Trang trước", style=discord.ButtonStyle.primary)
@@ -335,4 +347,4 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-            
+        
