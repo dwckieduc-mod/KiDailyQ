@@ -50,7 +50,8 @@ class LeaderboardView(discord.ui.View):
             else:
                 medal = f"**#{index}**"
                 
-            description += f"{medal} {user_display}   -   {format_points(points)} KiPoints  -  {streak_display}\n"
+            description += f"{medal} {user_display}\n"
+            f"` {format_points(points)} KiPoints  -  {streak_display}`\n"
 
         embed.description = description
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
