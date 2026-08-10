@@ -40,29 +40,45 @@ class LeaderboardView(discord.ui.View):
             color=discord.Color.from_rgb(88, 101, 242)
         )
         
-        # Header thống kê cá nhân theo giao diện mẫu
-        description = (
+        # Header thống kê cá nhân
+        header_text = (
             "`Score All-time Rankings`\n\n"
-            "💪 **Your Rank**\n"
+            "💬 **Your Rank**\n"
             f"You are rank `{user_rank}` on this server\n"
-            f"with a total of `{format_points(user_points)}` 💪 **Server Score**\n\n"
+            f"with a total of `{format_points(user_points)}` 💬 **Server Score**\n\n"
         )
         
-        # 2. Tạo danh sách thành viên theo trang
+        # 2. Tạo bảng dồn lề Trái - Phải bằng Codeblock
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
         
+        LINE_WIDTH = 42  # Độ rộng khung chuẩn Discord (Mobile & PC)
+        lines = []
+
         for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
             points = info.get("points", 0)
+            streak = info.get("streak", 0)
+            streak_text = f"🔥{streak}d" if streak >= 3 else f"🧊{max(0, streak)}d"
             
+            # Lấy tên hiển thị
             member = self.guild.get_member(int(user_id)) if self.guild and user_id.isdigit() else None
             user_name = member.display_name if member else f"User {user_id}"
 
-            rank_badge = f"`#{index}`"
-            description += f"> {rank_badge} {user_name} · 💪 `{format_points(points)}`\n"
+            # Cắt ngắn tên nếu quá dài để tránh vỡ khung
+            max_name_len = 15
+            clean_name = user_name[:max_name_len-1] + "…" if len(user_name) > max_name_len else user_name
 
-        embed.description = description
+            # Cột trái (Hạng + Tên) & Cột phải (Điểm + Streak)
+            left_part = f"#{index:<2} {clean_name}"
+            right_part = f"{format_points(points)} pts ({streak_text})"
+
+            # Tính toán số khoảng trắng để đẩy cột phải về sát góc
+            spaces_needed = max(2, LINE_WIDTH - len(left_part) - len(right_part))
+            lines.append(f"{left_part}{' ' * spaces_needed}{right_part}")
+
+        board_codeblock = "```text\n" + "\n".join(lines) + "\n```"
+        embed.description = header_text + board_codeblock
         
         next_p = self.current_page + 1 if self.current_page < self.total_pages else self.total_pages
         embed.set_footer(text=f"Page {self.current_page} • Type k.top {next_p} to go to page {next_p} of the leaderboard")
