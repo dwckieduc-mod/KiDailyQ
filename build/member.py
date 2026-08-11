@@ -1,7 +1,6 @@
 import os
 import io
 import asyncio
-import urllib.request
 import aiohttp
 import discord
 from discord.ext import commands
@@ -14,32 +13,49 @@ DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 FONT_BOLD_PATH = "montserratbd.ttf"
 FONT_REGULAR_PATH = "montserrat.ttf"
 
-def ensure_fonts():
-    """Tự động tải font Montserrat hỗ trợ tiếng Việt Unicode nét đẹp nếu server chưa có"""
+async def ensure_fonts_async(session: aiohttp.ClientSession):
+    """Tải font bất đồng bộ qua aiohttp để không làm đóng băng bot"""
     if not os.path.exists(FONT_BOLD_PATH):
         try:
-            urllib.request.urlretrieve(
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf",
-                FONT_BOLD_PATH
-            )
-        except Exception:
-            pass
+            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf"
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.read()
+                    with open(FONT_BOLD_PATH, "wb") as f:
+                        f.write(data)
+        except Exception as e:
+            print(f"[CẢNH BÁO] Không thể tải Montserrat-Bold: {e}")
 
     if not os.path.exists(FONT_REGULAR_PATH):
         try:
-            urllib.request.urlretrieve(
-                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Regular.ttf",
-                FONT_REGULAR_PATH
-            )
-        except Exception:
-            pass
+            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Regular.ttf"
+            async with session.get(url) as resp:
+                if resp.status == 200:
+                    data = await resp.read()
+                    with open(FONT_REGULAR_PATH, "wb") as f:
+                        f.write(data)
+        except Exception as e:
+            print(f"[CẢNH BÁO] Không thể tải Montserrat-Regular: {e}")
 
-# --- HÀM HỖ TRỢ VẼ BẢNG XẾP HẠNG THÀNH ẢNH ---
+def get_loaded_fonts():
+    """Load font từ file local, nếu lỗi sẽ tự động dùng font mặc định"""
+    try:
+        if os.path.exists(FONT_BOLD_PATH) and os.path.exists(FONT_REGULAR_PATH):
+            return (
+                ImageFont.truetype(FONT_BOLD_PATH, 24),
+                ImageFont.truetype(FONT_BOLD_PATH, 22),
+                ImageFont.truetype(FONT_REGULAR_PATH, 18)
+            )
+    except Exception as e:
+        print(f"[CẢNH BÁO] Lỗi load font ttf: {e}")
+    
+    default_font = ImageFont.load_default()
+    return default_font, default_font, default_font
+
 async def fetch_circle_avatar(session, url, size=(52, 52)):
     """Tải avatar người dùng và cắt thành hình tròn"""
     if not url:
-        img = Image.new("RGBA", size, (100, 100, 100, 255))
-        return img
+        return Image.new("RGBA", size, (100, 100, 100, 255))
     try:
         async with session.get(str(url)) as resp:
             if resp.status == 200:
@@ -54,17 +70,12 @@ async def fetch_circle_avatar(session, url, size=(52, 52)):
                 output = Image.new("RGBA", size, (0, 0, 0, 0))
                 output.paste(avatar, (0, 0), mask)
                 return output
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[CẢNH BÁO] Lỗi tải avatar ({url}): {e}")
     
-    img = Image.new("RGBA", size, (120, 120, 120, 255))
-    return img
+    return Image.new("RGBA", size, (120, 120, 120, 255))
 
 async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, guild, current_page, total_pages):
-    # Kiểm tra & tải font nếu server chưa có sẵn
-    ensure_fonts()
-
-    # Điều chỉnh kích thước khung bảng cân đối với font chữ to
     card_height = 80
     card_gap = 12
     top_margin = 150
@@ -72,7 +83,6 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     width = 950
     height = top_margin + len(page_data) * (card_height + card_gap) + bottom_margin
 
-    # Bảng màu Discord Dark Theme
     bg_color = (30, 31, 34, 255)
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
@@ -84,16 +94,9 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Nạp Font chữ to, rõ ràng và căn chỉnh chuẩn
-    try:
-        font_title = ImageFont.truetype(FONT_BOLD_PATH, 24)
-        font_bold = ImageFont.truetype(FONT_BOLD_PATH, 22)
-        font_small = ImageFont.truetype(FONT_REGULAR_PATH, 18)
-    except Exception:
-        font_title = font_bold = font_small = ImageFont.load_default()
-
-    # Tải song song tất cả Avatar qua HTTP Session
     async with aiohttp.ClientSession() as session:
+        await ensure_fonts_async(session)
+        
         author_member = guild.get_member(int(author_id)) if guild and str(author_id).isdigit() else None
         author_url = author_member.display_avatar.url if author_member else None
         author_avatar_task = fetch_circle_avatar(session, author_url, size=(52, 52))
@@ -107,7 +110,8 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         author_avatar = await author_avatar_task
         page_avatars = await asyncio.gather(*tasks)
 
-    # Dùng Pilmoji để render văn bản chứa Emoji
+    font_title, font_bold, font_small = get_loaded_fonts()
+
     with Pilmoji(img) as pilmoji:
         # 1. Khung Hạng Cá Nhân
         pilmoji.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
@@ -118,8 +122,6 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
         a_points = author_info.get("points", 0) if author_info else 0
         a_streak = author_info.get("streak", 0) if author_info else 0
-
-        # Kiểm tra icon streak cho hạng cá nhân: < 3 ngày dùng 🧊, >= 3 ngày dùng 🔥
         author_streak_icon = "🔥" if a_streak >= 3 else "🧊"
 
         pilmoji.text((105, 62), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
@@ -145,7 +147,6 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
             else:
                 rank_color = text_white
 
-            # Kiểm tra icon streak trong danh sách: < 3 ngày dùng 🧊, >= 3 ngày dùng 🔥
             streak_icon = "🔥" if streak >= 3 else "🧊"
 
             draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=12, fill=card_color)
@@ -247,227 +248,265 @@ class MemberCog(commands.Cog):
 
     @commands.command(name="profile", aliases=["pf"])
     async def point(self, ctx, member: discord.Member = None):
-        target = member or ctx.author
-        user_id = str(target.id)
-        
-        data = await load_data()
-        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        try:
+            target = member or ctx.author
+            user_id = str(target.id)
+            
+            data = await load_data()
+            user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
-        points = user_info.get("points", 0)
-        streak = user_info.get("streak", 0)
-        total_quests = user_info.get("total_quests", 0)
-        last_date = user_info.get("last_date") or "Chưa điểm danh"
+            points = user_info.get("points", 0)
+            streak = user_info.get("streak", 0)
+            total_quests = user_info.get("total_quests", 0)
+            last_date = user_info.get("last_date") or "Chưa điểm danh"
 
-        rank_str = "Chưa xếp hạng"
-        if data:
-            sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
-            for idx, (uid, info) in enumerate(sorted_users, start=1):
-                if uid == user_id:
-                    if idx == 1:
-                        rank_str = "🥇 Top 1"
-                    elif idx == 2:
-                        rank_str = "🥈 Top 2"
-                    elif idx == 3:
-                        rank_str = "🥉 Top 3"
-                    else:
-                        rank_str = f"#{idx} / {len(sorted_users)}"
-                    break
+            rank_str = "Chưa xếp hạng"
+            if data:
+                sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
+                for idx, (uid, info) in enumerate(sorted_users, start=1):
+                    if uid == user_id:
+                        if idx == 1:
+                            rank_str = "🥇 Top 1"
+                        elif idx == 2:
+                            rank_str = "🥈 Top 2"
+                        elif idx == 3:
+                            rank_str = "🥉 Top 3"
+                        else:
+                            rank_str = f"#{idx} / {len(sorted_users)}"
+                        break
 
-        embed = discord.Embed(
-            title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
-            description=f"Bảng thống kê hoạt động của {target.mention}",
-            color=discord.Color.purple()
-        )
-        
-        embed.set_thumbnail(url=target.display_avatar.url)
-        embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
+            embed = discord.Embed(
+                title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
+                description=f"Bảng thống kê hoạt động của {target.mention}",
+                color=discord.Color.purple()
+            )
+            
+            embed.set_thumbnail(url=target.display_avatar.url)
+            embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
 
-        embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-        embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints", inline=True)
-        embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
-        embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
-        embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
+            embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
+            embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints", inline=True)
+            embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
+            embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
+            embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
 
-        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-        await ctx.send(embed=embed)
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `profile`: `{e}`")
 
     @commands.command(name="top", aliases=["t"])
     async def top(self, ctx, page: int = 1):
-        data = await load_data()
-        if not data:
-            await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
-            return
+        try:
+            data = await load_data()
+            if not data:
+                await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
+                return
 
-        sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
-        
-        per_page = 10
-        total_pages = max(1, (len(sorted_users) + per_page - 1) // per_page)
-        
-        if page < 1 or page > total_pages:
-            await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
-            return
+            sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
+            
+            per_page = 10
+            total_pages = max(1, (len(sorted_users) + per_page - 1) // per_page)
+            
+            if page < 1 or page > total_pages:
+                await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
+                return
 
-        view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
-        view.current_page = page
-        view.update_buttons()
-        
-        file, embed = await view.get_page_file_and_embed()
-        message = await ctx.send(file=file, embed=embed, view=view)
-        view.message = message
+            view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
+            view.current_page = page
+            view.update_buttons()
+            
+            file, embed = await view.get_page_file_and_embed()
+            message = await ctx.send(file=file, embed=embed, view=view)
+            view.message = message
+        except Exception as e:
+            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `top`: `{e}`")
 
     @commands.command(name="avatar", aliases=["av"])
     async def avatar_command(self, ctx, member: discord.Member = None):
-        target = member or ctx.author
-        avatar_url = target.display_avatar.with_size(4096).url
+        try:
+            target = member or ctx.author
+            avatar_url = target.display_avatar.with_size(4096).url
 
-        embed = discord.Embed(
-            title=f"🖼️ AVATAR CỦA {target.display_name.upper()}",
-            description=f"🔗 [Nhấn vào đây để tải ảnh gốc HD]({avatar_url})",
-            color=discord.Color.blue()
-        )
-        embed.set_image(url=avatar_url)
-        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            embed = discord.Embed(
+                title=f"🖼️ AVATAR CỦA {target.display_name.upper()}",
+                description=f"🔗 [Nhấn vào đây để tải ảnh gốc HD]({avatar_url})",
+                color=discord.Color.blue()
+            )
+            embed.set_image(url=avatar_url)
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
 
-        await ctx.send(embed=embed)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `avatar`: `{e}`")
 
     @commands.command(name="rule", aliases=["r"])
     async def rule_command(self, ctx):
-        allowed_data = await load_allowed_channels(self.bot)
-        image_channels = []
-        command_channels = []
-        
-        if allowed_data:
-            for cid, perms in allowed_data.items():
-                if isinstance(perms, dict):
-                    if perms.get("image"):
-                        image_channels.append(f"<#{cid}>")
-                    if perms.get("command"):
-                        command_channels.append(f"<#{cid}>")
-                elif isinstance(perms, bool) and perms:
-                    command_channels.append(f"<#{cid}>")
-
-        image_channels_str = ", ".join(image_channels) if image_channels else "*kênh chưa được thiết lập*"
-        command_channels_str = ", ".join(command_channels) if command_channels else "*kênh chưa được thiết lập*"
+        try:
+            allowed_data = await load_allowed_channels(self.bot)
+            image_channels = []
+            command_channels = []
             
-        embed = discord.Embed(
-            title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
-            description="",
-            color=discord.Color.gold()
-        )
+            if allowed_data:
+                for cid, perms in allowed_data.items():
+                    if isinstance(perms, dict):
+                        if perms.get("image"):
+                            image_channels.append(f"<#{cid}>")
+                        if perms.get("command"):
+                            command_channels.append(f"<#{cid}>")
+                    elif isinstance(perms, bool) and perms:
+                        command_channels.append(f"<#{cid}>")
 
-        embed.add_field(
-            name="📖 . Hình thức làm Daily Quest:",
-            value=(
-                "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
-                f"- Mọi người sẽ làm nhiệm vụ và gửi vào {image_channels_str} để điểm danh.\n"
-            ),
-            inline=False
-        )
+            image_channels_str = ", ".join(image_channels) if image_channels else "*kênh chưa được thiết lập*"
+            command_channels_str = ", ".join(command_channels) if command_channels else "*kênh chưa được thiết lập*"
+                
+            embed = discord.Embed(
+                title="📜 QUY ĐỊNH & NỘI QUY ĐIỂM DANH",
+                description="",
+                color=discord.Color.gold()
+            )
 
-        embed.add_field(
-            name="📊 . Cách tính điểm:",
-            value=(
-                "- Khi bạn gửi nội dung vào, bot sẽ thông báo và thả biểu cảm với các emoji sau:\n"
-                "- - ✅ Hoàn thành.\n"
-                "- - ❌ Đã làm nhiệm vụ trước đó.\n"
-                "- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
-                "- Hoàn thành nhiệm vụ sẽ được cộng **100 KiPoints**.\n"
-                "- Khi đạt điều kiện streak **( ≥ 3 ngày)** thì bạn sẽ được cộng thêm **5 KiPoints** thưởng giữ chuỗi.\n"
-                "- Khi qua ngày mới bot sẽ khoá kênh lại kết thúc nhiệm vụ hôm đó.\n"
-            ),
-            inline=False
-        )
+            embed.add_field(
+                name="📖 . Hình thức làm Daily Quest:",
+                value=(
+                    "- Mỗi ngày **Ki Ki** sẽ đưa ra một nhiệm vụ.\n"
+                    f"- Mọi người sẽ làm nhiệm vụ và gửi vào {image_channels_str} để điểm danh.\n"
+                ),
+                inline=False
+            )
 
-        embed.add_field(
-            name="🚫 . Về hành vi sai phạm:",
-            value=(
-                "- Làm sai nhiệm vụ / nội dung không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
-                "- Các nội dung phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý.\n"
-            ),
-            inline=False
-        )
+            embed.add_field(
+                name="📊 . Cách tính điểm:",
+                value=(
+                    "- Khi bạn gửi nội dung vào, bot sẽ thông báo và thả biểu cảm với các emoji sau:\n"
+                    "- - ✅ Hoàn thành.\n"
+                    "- - ❌ Đã làm nhiệm vụ trước đó.\n"
+                    "- - 🔥 Bạn đã đạt điều kiện thưởng streak.\n"
+                    "- Hoàn thành nhiệm vụ sẽ được cộng **100 KiPoints**.\n"
+                    "- Khi đạt điều kiện streak **( ≥ 3 ngày)** thì bạn sẽ được cộng thêm **5 KiPoints** thưởng giữ chuỗi.\n"
+                    "- Khi qua ngày mới bot sẽ khoá kênh lại kết thúc nhiệm vụ hôm đó.\n"
+                ),
+                inline=False
+            )
 
-        embed.add_field(
-            name="📃 . Về lệnh của bot:",
-            value=(
-                "- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
-                f"- Kênh được phép dùng lệnh: <#1427911211424678019>\n"
-                "- Để biết về tên lệnh, hãy nhập lệnh `help` để xem danh sách các lệnh.\n"
-            ),
-            inline=False
-        )
-        
-        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-        await ctx.send(embed=embed)
+            embed.add_field(
+                name="🚫 . Về hành vi sai phạm:",
+                value=(
+                    "- Làm sai nhiệm vụ / nội dung không phù hợp sẽ bị từ chối và yêu cầu làm lại.\n"
+                    "- Các nội dung phải theo luật của server. Những trường hợp sai phạm sẽ được xử lý.\n"
+                ),
+                inline=False
+            )
+
+            embed.add_field(
+                name="📃 . Về lệnh của bot:",
+                value=(
+                    "- Bot dùng cú pháp `k.<lệnh>` / `K.<lệnh>`\n"
+                    f"- Kênh được phép dùng lệnh: {command_channels_str}\n"
+                    "- Để biết về tên lệnh, hãy nhập lệnh `help` để xem danh sách các lệnh.\n"
+                ),
+                inline=False
+            )
+            
+            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+            await ctx.send(embed=embed)
+        except Exception as e:
+            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `rule`: `{e}`")
 
     @commands.command(name="help", aliases=["h"])
     async def help_command(self, ctx, *, group: str = None):
-        if not group:
-            embed = discord.Embed(
-                title="📜 HƯỚNG DẪN SỬ DỤNG LỆNH (HELP)",
-                description="Sử dụng cú pháp `k.help <nhóm lệnh>` để xem chi tiết danh sách lệnh.",
-                color=discord.Color.blue()
-            )
-            embed.add_field(
-                name="📂 Các nhóm lệnh khả dụng:",
-                value=(
-                    "- `k.help member`: Nhóm lệnh dành cho tất cả thành viên.\n"
-                    "- `k.help admin`: Nhóm lệnh quản trị điểm số & streak (Chỉ Admin).\n"
-                    "- `k.help set up`: Nhóm lệnh cài đặt phân quyền & kênh (Chỉ Admin)."
-                ),
-                inline=False
-            )
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
-            return
+        try:
+            if not group:
+                embed = discord.Embed(
+                    title="📜 HƯỚNG DẪN SỬ DỤNG LỆNH (HELP)",
+                    description="Sử dụng cú pháp `k.help <nhóm lệnh>` để xem chi tiết danh sách lệnh.",
+                    color=discord.Color.blue()
+                )
+                embed.add_field(
+                    name="📂 Các nhóm lệnh khả dụng:",
+                    value=(
+                        "- `k.help member`: Nhóm lệnh dành cho tất cả thành viên.\n"
+                        "- `k.help admin`: Nhóm lệnh quản trị điểm số & streak (Chỉ Admin).\n"
+                        "- `k.help set up`: Nhóm lệnh cài đặt phân quyền & kênh (Chỉ Admin)."
+                    ),
+                    inline=False
+                )
+                embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                await ctx.send(embed=embed)
+                return
 
-        group_clean = group.lower().strip()
+            group_clean = group.lower().strip()
 
-        if group_clean in ["member", "mem"]:
-            embed = discord.Embed(
-                title="👤 NHÓM LỆNH THÀNH VIÊN (MEMBER)",
-                description="Các lệnh sử dụng cho tất cả thành viên trong máy chủ:",
-                color=discord.Color.green()
-            )
-            embed.add_field(
-                name="📌 Danh sách lệnh:",
-                value=(
-                    "- `help`: Xem hướng dẫn sử dụng lệnh.\n"
-                    "- `rule`: Xem quy định & cách tính điểm.\n"
-                    "- `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
-                    "- `top <số trang>`: Xem bảng xếp hạng KiPoints.\n"
-                    "- `avatar @User`: Xem ảnh đại diện (avatar) chất lượng HD (4096px)."
-                ),
-                inline=False
-            )
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
+            if group_clean in ["member", "mem"]:
+                embed = discord.Embed(
+                    title="👤 NHÓM LỆNH THÀNH VIÊN (MEMBER)",
+                    description="Các lệnh sử dụng cho tất cả thành viên trong máy chủ:",
+                    color=discord.Color.green()
+                )
+                embed.add_field(
+                    name="📌 Danh sách lệnh:",
+                    value=(
+                        "- `help`: Xem hướng dẫn sử dụng lệnh.\n"
+                        "- `rule`: Xem quy định & cách tính điểm.\n"
+                        "- `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
+                        "- `top <số trang>`: Xem bảng xếp hạng KiPoints.\n"
+                        "- `avatar @User`: Xem ảnh đại diện (avatar) chất lượng HD (4096px)."
+                    ),
+                    inline=False
+                )
+                embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                await ctx.send(embed=embed)
 
-        elif group_clean in ["admin", "ad"]:
-            embed = discord.Embed(
-                title="⚙️ NHÓM LỆNH QUẢN TRỊ (ADMIN)",
-                description="",
-                color=discord.Color.red()
-            )
-            embed.add_field(
-                name="📌 Danh sách lệnh:",
-                value=(
-                    "- `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
-                    "- `remove @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
-                    "- `addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
-                    "- `removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
-                    "- `deny @User`: Hủy kết quả điểm danh hôm nay.\n"
-                    "- `reset @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
-                ),
-                inline=False
-            )
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
+            elif group_clean in ["admin", "ad"]:
+                embed = discord.Embed(
+                    title="⚙️ NHÓM LỆNH QUẢN TRỊ (ADMIN)",
+                    description="",
+                    color=discord.Color.red()
+                )
+                embed.add_field(
+                    name="📌 Danh sách lệnh:",
+                    value=(
+                        "- `add @User <số KiPoints>`: Cộng KiPoints cho thành viên.\n"
+                        "- `remove @User <số KiPoints>`: Trừ KiPoints của thành viên.\n"
+                        "- `addstreak @User <số ngày>`: Cộng chuỗi streak.\n"
+                        "- `removestreak @User <số ngày>`: Trừ chuỗi streak.\n"
+                        "- `deny @User`: Hủy kết quả điểm danh hôm nay.\n"
+                        "- `reset @User/all`: Đặt lại toàn bộ dữ liệu của 1 người hoặc tất cả."
+                    ),
+                    inline=False
+                )
+                embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                await ctx.send(embed=embed)
 
-        elif group_clean in ["set up", "setup", "set_up"]:
-            embed = discord.Embed(
-                title="🛠️ NHÓM LỆNH CÀI ĐẶT (SET UP)",
-                description="",
-                color=discord.Color.orange()
-            )
-            embed.add_fie
+            elif group_clean in ["set up", "setup", "set_up"]:
+                embed = discord.Embed(
+                    title="🛠️ NHÓM LỆNH CÀI ĐẶT (SET UP)",
+                    description="",
+                    color=discord.Color.orange()
+                )
+                embed.add_field(
+                    name="📌 Danh sách lệnh:",
+                    value=(
+                        "- `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
+                        "- `allowlist`: Xem danh sách phân quyền các kênh hiện tại.\n"
+                        "- `lock`: Khóa kênh làm nhiệm vụ.\n"
+                        "- `unlock`: Mở khóa kênh làm nhiệm vụ."
+                    ),
+                    inline=False
+                )
+                embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+                await ctx.send(embed=embed)
+
+            else:
+                embed = discord.Embed(
+                    title="⚠️ NHÓM LỆNH KHÔNG HỢP LỆ",
+                    description="Vui lòng chọn 1 trong các nhóm lệnh sau:\n• `k.help member`\n• `k.help admin`\n• `k.help set up`",
+                    color=discord.Color.gold()
+                )
+                await ctx.send(embed=embed)
+        except Exception as e:
+            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `help`: `{e}`")
+
+async def setup(bot):
+    await bot.add_cog(MemberCog(bot))
+  
