@@ -90,7 +90,7 @@ def start_auto_save_loop(bot=None):
         _auto_save_loop.start()
         _AUTO_SAVE_TASK_STARTED = True
 
-# ==================== PHẦN XỬ LÝ KÊNH ĐƯỢC PHÉP ====================
+# ==================== PHẦN XỬ LÝ KÊNH VÀ USER ĐƯỢC PHÉP ====================
 def _load_allowed_channels_sync():
     if not GITHUB_TOKEN or not GIST_ID:
         return {}
@@ -124,6 +124,11 @@ async def load_allowed_channels(bot=None):
         has_deleted = False
 
         for cid_str, perms in list(data.items()):
+            # Giữ lại danh sách allowed_users, không lọc bỏ theo ID kênh
+            if cid_str == "allowed_users":
+                cleaned_data[cid_str] = perms
+                continue
+
             if not cid_str.isdigit():
                 has_deleted = True
                 continue
@@ -192,4 +197,3 @@ def format_points(points: int, shorten: bool = False) -> str:
             return f"{val:.1f}k".replace(".", ",") if val % 1 != 0 else f"{int(val)}k"
         return str(points)
     return f"{points:,}".replace(",", ".")
-            
