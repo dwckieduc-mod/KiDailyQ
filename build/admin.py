@@ -1,14 +1,24 @@
 import discord
 from discord.ext import commands
 from datetime import datetime, timedelta, timezone
-from database import load_data, save_data, get_streak_text, format_points
+from database import load_data, save_data, get_streak_text, format_points, load_allowed_channels
+
+def is_admin_or_allowed():
+    async def predicate(ctx):
+        if ctx.guild and ctx.author.guild_permissions.administrator:
+            return True
+        allowed_data = await load_allowed_channels()
+        allowed_users = allowed_data.get("allowed_users", [])
+        return str(ctx.author.id) in allowed_users
+    return commands.check(predicate)
+
 
 class AdminCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
     @commands.command(name="add")
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def add_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
@@ -29,8 +39,8 @@ class AdminCog(commands.Cog):
 
     @add_diem.error
     async def add_diem_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH ADD", description="Vui lòng nhập đúng:\n• `k.add @User <số_KiPoints>`", color=discord.Color.gold())
         else:
@@ -38,7 +48,7 @@ class AdminCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="remove", aliases=["rm"])
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def remove_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
@@ -59,8 +69,8 @@ class AdminCog(commands.Cog):
 
     @remove_diem.error
     async def remove_diem_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH REMOVE", description="Vui lòng nhập đúng:\n• `k.remove @User <số_KiPoints>`", color=discord.Color.gold())
         else:
@@ -68,7 +78,7 @@ class AdminCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="addstreak", aliases=["adds"])
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def add_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
@@ -97,8 +107,8 @@ class AdminCog(commands.Cog):
 
     @add_streak.error
     async def add_streak_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH ADDSTREAK", description="Vui lòng nhập đúng:\n• `k.addstreak @User <số_ngày>`", color=discord.Color.gold())
         else:
@@ -106,7 +116,7 @@ class AdminCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="removestreak", aliases=["rms"])
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def remove_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
@@ -127,8 +137,8 @@ class AdminCog(commands.Cog):
 
     @remove_streak.error
     async def remove_streak_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH REMOVESTREAK", description="Vui lòng nhập đúng:\n• `k.removestreak @User <số_ngày>`", color=discord.Color.gold())
         else:
@@ -136,7 +146,7 @@ class AdminCog(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command(name="reset", aliases=["rs"])
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def reset_user(self, ctx, target: str = None):
         if not target:
             embed = discord.Embed(
@@ -197,14 +207,14 @@ class AdminCog(commands.Cog):
 
     @reset_user.error
     async def reset_user_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         else:
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
     @commands.command(name="deny", aliases=["dn"])
-    @commands.has_permissions(administrator=True)
+    @is_admin_or_allowed()
     async def refund_user(self, ctx, member: discord.Member):
         user_id = str(member.id)
         data = await load_data()
@@ -257,8 +267,8 @@ class AdminCog(commands.Cog):
 
     @refund_user.error
     async def refund_user_error(self, ctx, error):
-        if isinstance(error, commands.MissingPermissions):
-            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** để dùng lệnh này!", color=discord.Color.red())
+        if isinstance(error, commands.CheckFailure):
+            embed = discord.Embed(title="❌ KHÔNG CÓ QUYỀN", description="Bạn cần quyền **Administrator** hoặc được cấp quyền **user** để dùng lệnh này!", color=discord.Color.red())
         elif isinstance(error, (commands.MissingRequiredArgument, commands.BadArgument)):
             embed = discord.Embed(title="⚠️ SAI CÚ PHÁP LỆNH DENY", description="Vui lòng nhập đúng:\n• `k.deny @User` hoặc `k.dn @User`", color=discord.Color.gold())
         else:
@@ -267,4 +277,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-                    
+                                  
