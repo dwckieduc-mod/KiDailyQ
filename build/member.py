@@ -1,6 +1,7 @@
 import os
 import io
 import asyncio
+import urllib.request
 import aiohttp
 import discord
 from discord.ext import commands
@@ -10,8 +11,31 @@ from database import load_data, get_streak_text, format_points, load_allowed_cha
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
+FONT_BOLD_PATH = "montserratbd.ttf"
+FONT_REGULAR_PATH = "montserrat.ttf"
+
+def ensure_fonts():
+    """Tự động tải font Montserrat hỗ trợ tiếng Việt Unicode nét đẹp nếu server chưa có"""
+    if not os.path.exists(FONT_BOLD_PATH):
+        try:
+            urllib.request.urlretrieve(
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf",
+                FONT_BOLD_PATH
+            )
+        except Exception:
+            pass
+
+    if not os.path.exists(FONT_REGULAR_PATH):
+        try:
+            urllib.request.urlretrieve(
+                "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Regular.ttf",
+                FONT_REGULAR_PATH
+            )
+        except Exception:
+            pass
+
 # --- HÀM HỖ TRỢ VẼ BẢNG XẾP HẠNG THÀNH ẢNH ---
-async def fetch_circle_avatar(session, url, size=(45, 45)):
+async def fetch_circle_avatar(session, url, size=(52, 52)):
     """Tải avatar người dùng và cắt thành hình tròn"""
     if not url:
         img = Image.new("RGBA", size, (100, 100, 100, 255))
@@ -37,11 +61,15 @@ async def fetch_circle_avatar(session, url, size=(45, 45)):
     return img
 
 async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, guild, current_page, total_pages):
-    card_height = 65
-    card_gap = 10
-    top_margin = 135
-    bottom_margin = 20
-    width = 850
+    # Kiểm tra & tải font nếu server chưa có sẵn
+    ensure_fonts()
+
+    # Điều chỉnh kích thước khung bảng cân đối với font chữ to
+    card_height = 80
+    card_gap = 12
+    top_margin = 150
+    bottom_margin = 25
+    width = 950
     height = top_margin + len(page_data) * (card_height + card_gap) + bottom_margin
 
     # Bảng màu Discord Dark Theme
@@ -56,11 +84,11 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    # Thử nạp Font chữ hệ thống (Fallback nếu không có)
+    # Nạp Font chữ to, rõ ràng và căn chỉnh chuẩn
     try:
-        font_title = ImageFont.truetype("montserrat.ttf", 36)
-        font_bold = ImageFont.truetype("montserratbd.ttf", 32)
-        font_small = ImageFont.truetype("montserrat.ttf", 28)
+        font_title = ImageFont.truetype(FONT_BOLD_PATH, 24)
+        font_bold = ImageFont.truetype(FONT_BOLD_PATH, 22)
+        font_small = ImageFont.truetype(FONT_REGULAR_PATH, 18)
     except Exception:
         font_title = font_bold = font_small = ImageFont.load_default()
 
@@ -68,13 +96,13 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     async with aiohttp.ClientSession() as session:
         author_member = guild.get_member(int(author_id)) if guild and str(author_id).isdigit() else None
         author_url = author_member.display_avatar.url if author_member else None
-        author_avatar_task = fetch_circle_avatar(session, author_url, size=(45, 45))
+        author_avatar_task = fetch_circle_avatar(session, author_url, size=(52, 52))
 
         tasks = []
         for uid, _ in page_data:
             m = guild.get_member(int(uid)) if guild and str(uid).isdigit() else None
             url = m.display_avatar.url if m else None
-            tasks.append(fetch_circle_avatar(session, url, size=(45, 45)))
+            tasks.append(fetch_circle_avatar(session, url, size=(52, 52)))
 
         author_avatar = await author_avatar_task
         page_avatars = await asyncio.gather(*tasks)
@@ -83,16 +111,19 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     with Pilmoji(img) as pilmoji:
         # 1. Khung Hạng Cá Nhân
         pilmoji.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
-        draw.rounded_rectangle([20, 45, width - 20, 110], radius=10, fill=card_color)
-        img.paste(author_avatar, (35, 55), author_avatar)
+        draw.rounded_rectangle([20, 50, width - 20, 130], radius=12, fill=card_color)
+        img.paste(author_avatar, (35, 64), author_avatar)
 
         author_name = author_member.display_name if author_member else f"User {author_id}"
         rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
         a_points = author_info.get("points", 0) if author_info else 0
         a_streak = author_info.get("streak", 0) if author_info else 0
 
-        pilmoji.text((95, 57), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
-        pilmoji.text((95, 83), f"⚡ {format_points(a_points)} KiPoints   |   🔥 Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
+        # Kiểm tra icon streak cho hạng cá nhân: < 3 ngày dùng 🧊, >= 3 ngày dùng 🔥
+        author_streak_icon = "🔥" if a_streak >= 3 else "🧊"
+
+        pilmoji.text((105, 62), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
+        pilmoji.text((105, 94), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
 
         # 2. Danh Sách Bảng Xếp Hạng
         y_pos = top_margin
@@ -114,13 +145,16 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
             else:
                 rank_color = text_white
 
-            draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=10, fill=card_color)
-            pilmoji.text((40, y_pos + 20), f"#{index}", fill=rank_color, font=font_bold)
-            img.paste(avatar_img, (100, y_pos + 10), avatar_img)
+            # Kiểm tra icon streak trong danh sách: < 3 ngày dùng 🧊, >= 3 ngày dùng 🔥
+            streak_icon = "🔥" if streak >= 3 else "🧊"
 
-            pilmoji.text((160, y_pos + 20), user_display[:22], fill=text_white, font=font_bold)
-            pilmoji.text((width - 340, y_pos + 20), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
-            pilmoji.text((width - 150, y_pos + 20), f"🔥 {streak} ngày", fill=text_sub, font=font_small)
+            draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=12, fill=card_color)
+            pilmoji.text((40, y_pos + 26), f"#{index}", fill=rank_color, font=font_bold)
+            img.paste(avatar_img, (110, y_pos + 14), avatar_img)
+
+            pilmoji.text((180, y_pos + 26), user_display[:20], fill=text_white, font=font_bold)
+            pilmoji.text((width - 380, y_pos + 26), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
+            pilmoji.text((width - 160, y_pos + 28), f"{streak_icon} {streak} ngày", fill=text_sub, font=font_small)
 
             y_pos += card_height + card_gap
 
@@ -436,27 +470,4 @@ class MemberCog(commands.Cog):
                 description="",
                 color=discord.Color.orange()
             )
-            embed.add_field(
-                name="📌 Danh sách lệnh:",
-                value=(
-                    "- `allow <#kênh/ID> <image/command> <true/false>`: Quản lý quyền gửi ảnh/dùng lệnh theo kênh.\n"
-                    "- `allowlist`: Xem danh sách phân quyền các kênh hiện tại.\n"
-                    "- `lock`: Khóa kênh làm nhiệm vụ.\n"
-                    "- `unlock`: Mở khóa kênh làm nhiệm vụ."
-                ),
-                inline=False
-            )
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
-
-        else:
-            embed = discord.Embed(
-                title="⚠️ NHÓM LỆNH KHÔNG HỢP LỆ",
-                description="Vui lòng chọn 1 trong các nhóm lệnh sau:\n• `k.help member`\n• `k.help admin`\n• `k.help set up`",
-                color=discord.Color.gold()
-            )
-            await ctx.send(embed=embed)
-
-async def setup(bot):
-    await bot.add_cog(MemberCog(bot))
-        
+            embed.add_fie
