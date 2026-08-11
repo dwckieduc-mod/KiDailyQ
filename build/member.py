@@ -1,15 +1,138 @@
 import os
+import io
+import asyncio
+import aiohttp
 import discord
 from discord.ext import commands
+from PIL import Image, ImageDraw, ImageFont
 from database import load_data, get_streak_text, format_points, load_allowed_channels
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
+# --- HÀM HỖ TRỢ VẼ BẢNG XẾP HẠNG THÀNH ẢNH ---
+async def fetch_circle_avatar(session, url, size=(45, 45)):
+    """Tải avatar người dùng và cắt thành hình tròn"""
+    if not url:
+        img = Image.new("RGBA", size, (100, 100, 100, 255))
+        return img
+    try:
+        async with session.get(str(url)) as resp:
+            if resp.status == 200:
+                data = await resp.read()
+                avatar = Image.open(io.BytesIO(data)).convert("RGBA")
+                avatar = avatar.resize(size, Image.Resampling.LANCZOS)
+                
+                mask = Image.new("L", size, 0)
+                draw = ImageDraw.Draw(mask)
+                draw.ellipse((0, 0, size[0], size[1]), fill=255)
+                
+                output = Image.new("RGBA", size, (0, 0, 0, 0))
+                output.paste(avatar, (0, 0), mask)
+                return output
+    except Exception:
+        pass
+    
+    img = Image.new("RGBA", size, (120, 120, 120, 255))
+    return img
+
+async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, guild, current_page, total_pages):
+    card_height = 65
+    card_gap = 10
+    top_margin = 135
+    bottom_margin = 20
+    width = 850
+    height = top_margin + len(page_data) * (card_height + card_gap) + bottom_margin
+
+    # Bảng màu Discord Dark Theme
+    bg_color = (30, 31, 34, 255)
+    card_color = (43, 45, 49, 255)
+    text_white = (255, 255, 255, 255)
+    text_sub = (180, 185, 195, 255)
+    accent_gold = (241, 196, 15, 255)
+    accent_silver = (189, 195, 199, 255)
+    accent_bronze = (211, 84, 0, 255)
+
+    img = Image.new("RGBA", (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    # Thử nạp Font chữ hệ thống (Fallback nếu không có)
+    try:
+        font_title = ImageFont.truetype("arial.ttf", 20)
+        font_bold = ImageFont.truetype("arialbd.ttf", 19)
+        font_small = ImageFont.truetype("arial.ttf", 15)
+    except Exception:
+        font_title = font_bold = font_small = ImageFont.load_default()
+
+    # Tải song song tất cả Avatar qua HTTP Session
+    async with aiohttp.ClientSession() as session:
+        author_member = guild.get_member(int(author_id)) if guild and str(author_id).isdigit() else None
+        author_url = author_member.display_avatar.url if author_member else None
+        author_avatar_task = fetch_circle_avatar(session, author_url, size=(45, 45))
+
+        tasks = []
+        for uid, _ in page_data:
+            m = guild.get_member(int(uid)) if guild and str(uid).isdigit() else None
+            url = m.display_avatar.url if m else None
+            tasks.append(fetch_circle_avatar(session, url, size=(45, 45)))
+
+        author_avatar = await author_avatar_task
+        page_avatars = await asyncio.gather(*tasks)
+
+    # 1. Khung Hạng Cá Nhân
+    draw.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
+    draw.rounded_rectangle([20, 45, width - 20, 110], radius=10, fill=card_color)
+    img.paste(author_avatar, (35, 55), author_avatar)
+
+    author_name = author_member.display_name if author_member else f"User {author_id}"
+    rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
+    a_points = author_info.get("points", 0) if author_info else 0
+    a_streak = author_info.get("streak", 0) if author_info else 0
+
+    draw.text((95, 57), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
+    draw.text((95, 83), f"⚡ {format_points(a_points)} KiPoints   |   🔥 Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
+
+    # 2. Danh Sách Bảng Xếp Hạng
+    y_pos = top_margin
+    start_rank = (current_page - 1) * 10 + 1
+
+    for index, ((user_id, info), avatar_img) in enumerate(zip(page_data, page_avatars), start=start_rank):
+        points = info.get("points", 0)
+        streak = info.get("streak", 0)
+        
+        member = guild.get_member(int(user_id)) if guild and str(user_id).isdigit() else None
+        user_display = member.display_name if member else f"User {user_id}"
+
+        if index == 1:
+            rank_color = accent_gold
+        elif index == 2:
+            rank_color = accent_silver
+        elif index == 3:
+            rank_color = accent_bronze
+        else:
+            rank_color = text_white
+
+        draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=10, fill=card_color)
+        draw.text((40, y_pos + 20), f"#{index}", fill=rank_color, font=font_bold)
+        img.paste(avatar_img, (100, y_pos + 10), avatar_img)
+
+        draw.text((160, y_pos + 20), user_display[:22], fill=text_white, font=font_bold)
+        draw.text((width - 340, y_pos + 20), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
+        draw.text((width - 150, y_pos + 20), f"🔥 {streak} ngày", fill=text_sub, font=font_small)
+
+        y_pos += card_height + card_gap
+
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG")
+    buffer.seek(0)
+    return buffer
+
+
 class LeaderboardView(discord.ui.View):
-    def __init__(self, data, author_id, per_page=10):
+    def __init__(self, data, author_id, guild, per_page=10):
         super().__init__(timeout=60)
         self.data = data
         self.author_id = author_id
+        self.guild = guild
         self.per_page = per_page
         self.current_page = 1
         self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
@@ -20,54 +143,56 @@ class LeaderboardView(discord.ui.View):
         self.children[0].disabled = (self.current_page == 1)
         self.children[1].disabled = (self.current_page == self.total_pages)
 
-    def create_embed(self):
-        embed = discord.Embed(
-            title="🏆 BẢNG XẾP HẠNG KIPOINTS 🏆",
-            color=discord.Color.gold()
-        )
-        
+    async def get_page_file_and_embed(self):
+        author_rank_idx = None
+        author_info = None
+        for idx, (uid, info) in enumerate(self.data, start=1):
+            if str(uid) == str(self.author_id):
+                author_rank_idx = idx
+                author_info = info
+                break
+
         start_idx = (self.current_page - 1) * self.per_page
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
-        
-        description = ""
-        for index, (user_id, info) in enumerate(page_data, start=start_idx + 1):
-            points = info.get("points", 0)
-            streak = info.get("streak", 0)
-            streak_display = get_streak_text(streak)
-            
-            if index == 1:
-                medal = "🥇"
-            elif index == 2:
-                medal = "🥈"
-            elif index == 3:
-                medal = "🥉"
-            else:
-                medal = f"**#{index}**"
-                
-            description += f"{medal} <@{user_id}> - **{format_points(points)}** KiPoints (Chuỗi: {streak_display})\n"
 
-        embed.description = description
+        buffer = await draw_leaderboard(
+            page_data=page_data,
+            author_id=self.author_id,
+            author_rank_idx=author_rank_idx,
+            author_info=author_info,
+            guild=self.guild,
+            current_page=self.current_page,
+            total_pages=self.total_pages
+        )
+
+        file = discord.File(fp=buffer, filename="leaderboard.png")
+        embed = discord.Embed(color=discord.Color.gold())
+        embed.set_image(url="attachment://leaderboard.png")
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
-        return embed
+        return file, embed
 
     @discord.ui.button(label="◀ Trang trước", style=discord.ButtonStyle.primary)
     async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message("❌ Chỉ người dùng lệnh mới có thể chuyển trang!", ephemeral=True)
         
+        await interaction.response.defer()
         self.current_page -= 1
         self.update_buttons()
-        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+        file, embed = await self.get_page_file_and_embed()
+        await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
 
     @discord.ui.button(label="Trang sau ▶", style=discord.ButtonStyle.primary)
     async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
         if interaction.user.id != self.author_id:
             return await interaction.response.send_message("❌ Chỉ người dùng lệnh mới có thể chuyển trang!", ephemeral=True)
         
+        await interaction.response.defer()
         self.current_page += 1
         self.update_buttons()
-        await interaction.response.edit_message(embed=self.create_embed(), view=self)
+        file, embed = await self.get_page_file_and_embed()
+        await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
 
     async def on_timeout(self):
         for child in self.children:
@@ -77,6 +202,7 @@ class LeaderboardView(discord.ui.View):
                 await self.message.edit(view=self)
             except Exception:
                 pass
+
 
 class MemberCog(commands.Cog):
     def __init__(self, bot):
@@ -144,13 +270,28 @@ class MemberCog(commands.Cog):
             await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
             return
 
-        view = LeaderboardView(sorted_users, ctx.author.id, per_page=per_page)
+        view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
         view.current_page = page
         view.update_buttons()
         
-        embed = view.create_embed()
-        message = await ctx.send(embed=embed, view=view)
+        file, embed = await view.get_page_file_and_embed()
+        message = await ctx.send(file=file, embed=embed, view=view)
         view.message = message
+
+    @commands.command(name="avatar", aliases=["av"])
+    async def avatar_command(self, ctx, member: discord.Member = None):
+        target = member or ctx.author
+        avatar_url = target.display_avatar.with_size(4096).url
+
+        embed = discord.Embed(
+            title=f"🖼️ AVATAR CỦA {target.display_name.upper()}",
+            description=f"🔗 [Nhấn vào đây để tải ảnh gốc HD]({avatar_url})",
+            color=discord.Color.blue()
+        )
+        embed.set_image(url=avatar_url)
+        embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
+
+        await ctx.send(embed=embed)
 
     @commands.command(name="rule", aliases=["r"])
     async def rule_command(self, ctx):
@@ -257,7 +398,8 @@ class MemberCog(commands.Cog):
                     "- `help`: Xem hướng dẫn sử dụng lệnh.\n"
                     "- `rule`: Xem quy định & cách tính điểm.\n"
                     "- `profile @User`: Xem hồ sơ nhiệm vụ cá nhân.\n"
-                    "- `top <số trang>`: Xem bảng xếp hạng KiPoints."
+                    "- `top <số trang>`: Xem bảng xếp hạng KiPoints.\n"
+                    "- `avatar @User`: Xem ảnh đại diện (avatar) chất lượng HD (4096px)."
                 ),
                 inline=False
             )
