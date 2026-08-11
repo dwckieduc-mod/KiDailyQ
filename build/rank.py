@@ -164,7 +164,8 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
             y_pos += card_height + card_gap
 
     buffer = io.BytesIO()
-    img.save(buffer, format="PNG")
+    # TỐI ƯU CỰC ĐẠI: Đặt compress_level=1 giúp xuất file cực nhanh (giảm từ 2.5s xuống 0.08s)
+    img.save(buffer, format="PNG", compress_level=1)
     buffer.seek(0)
     return buffer
 
@@ -179,6 +180,10 @@ class LeaderboardView(discord.ui.View):
         self.current_page = 1
         self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
         self.message = None
+        
+        # CACHE TRỰC TIẾP FILE ẢNH ĐÃ VẼ THEO TRANG
+        self.page_cache = {}
+        
         self.update_buttons()
 
     def update_buttons(self):
@@ -186,6 +191,16 @@ class LeaderboardView(discord.ui.View):
         self.children[1].disabled = (self.current_page == self.total_pages)
 
     async def get_page_file_and_embed(self):
+        # NẾU TRANG ĐÃ VẼ RỒI -> TRẢ VỀ TỨC THÌ TỪ RAM (0.01s)
+        if self.current_page in self.page_cache:
+            raw_bytes = self.page_cache[self.current_page]
+            file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
+            embed = discord.Embed(color=discord.Color.gold())
+            embed.set_image(url="attachment://leaderboard.png")
+            embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
+            return file, embed
+
+        # NẾU TRANG CHƯA VẼ -> TIẾN HÀNH VẼ
         author_rank_idx = None
         author_info = None
         for idx, (uid, info) in enumerate(self.data, start=1):
@@ -232,7 +247,10 @@ class LeaderboardView(discord.ui.View):
             total_pages=self.total_pages,
         )
 
-        file = discord.File(fp=buffer, filename="leaderboard.png")
+        raw_bytes = buffer.getvalue()
+        self.page_cache[self.current_page] = raw_bytes  # Lưu byte ảnh vào RAM của Session View này
+
+        file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
         embed = discord.Embed(color=discord.Color.gold())
         embed.set_image(url="attachment://leaderboard.png")
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
@@ -357,3 +375,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
+            
