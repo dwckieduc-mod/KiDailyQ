@@ -20,9 +20,13 @@ bot = commands.Bot(
 
 @bot.check
 async def restrict_channel(ctx):
-    if ctx.guild and ctx.author.guild_permissions.administrator: 
-        return True
     allowed_channels = await load_allowed_channels()
+    allowed_users = allowed_channels.get("allowed_users", [])
+
+    # Nếu là Admin hoặc User được cấp quyền 'user' -> Bỏ qua giới hạn kênh
+    if ctx.guild and (ctx.author.guild_permissions.administrator or str(ctx.author.id) in allowed_users): 
+        return True
+
     ch_perms = allowed_channels.get(str(ctx.channel.id), {})
     if isinstance(ch_perms, bool):
         return ch_perms
@@ -52,4 +56,3 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    
