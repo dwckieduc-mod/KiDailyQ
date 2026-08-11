@@ -5,6 +5,7 @@ import aiohttp
 import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
+from pilmoji import Pilmoji
 from database import load_data, get_streak_text, format_points, load_allowed_channels
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
@@ -57,9 +58,9 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
 
     # Thử nạp Font chữ hệ thống (Fallback nếu không có)
     try:
-        font_title = ImageFont.truetype("arial.ttf", 20)
-        font_bold = ImageFont.truetype("arialbd.ttf", 19)
-        font_small = ImageFont.truetype("arial.ttf", 15)
+        font_title = ImageFont.truetype("montserrat.ttf", 36)
+        font_bold = ImageFont.truetype("montserratbd.ttf", 32)
+        font_small = ImageFont.truetype("montserrat.ttf", 28)
     except Exception:
         font_title = font_bold = font_small = ImageFont.load_default()
 
@@ -78,48 +79,50 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         author_avatar = await author_avatar_task
         page_avatars = await asyncio.gather(*tasks)
 
-    # 1. Khung Hạng Cá Nhân
-    draw.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
-    draw.rounded_rectangle([20, 45, width - 20, 110], radius=10, fill=card_color)
-    img.paste(author_avatar, (35, 55), author_avatar)
+    # Dùng Pilmoji để render văn bản chứa Emoji
+    with Pilmoji(img) as pilmoji:
+        # 1. Khung Hạng Cá Nhân
+        pilmoji.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
+        draw.rounded_rectangle([20, 45, width - 20, 110], radius=10, fill=card_color)
+        img.paste(author_avatar, (35, 55), author_avatar)
 
-    author_name = author_member.display_name if author_member else f"User {author_id}"
-    rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
-    a_points = author_info.get("points", 0) if author_info else 0
-    a_streak = author_info.get("streak", 0) if author_info else 0
+        author_name = author_member.display_name if author_member else f"User {author_id}"
+        rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
+        a_points = author_info.get("points", 0) if author_info else 0
+        a_streak = author_info.get("streak", 0) if author_info else 0
 
-    draw.text((95, 57), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
-    draw.text((95, 83), f"⚡ {format_points(a_points)} KiPoints   |   🔥 Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
+        pilmoji.text((95, 57), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
+        pilmoji.text((95, 83), f"⚡ {format_points(a_points)} KiPoints   |   🔥 Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
 
-    # 2. Danh Sách Bảng Xếp Hạng
-    y_pos = top_margin
-    start_rank = (current_page - 1) * 10 + 1
+        # 2. Danh Sách Bảng Xếp Hạng
+        y_pos = top_margin
+        start_rank = (current_page - 1) * 10 + 1
 
-    for index, ((user_id, info), avatar_img) in enumerate(zip(page_data, page_avatars), start=start_rank):
-        points = info.get("points", 0)
-        streak = info.get("streak", 0)
-        
-        member = guild.get_member(int(user_id)) if guild and str(user_id).isdigit() else None
-        user_display = member.display_name if member else f"User {user_id}"
+        for index, ((user_id, info), avatar_img) in enumerate(zip(page_data, page_avatars), start=start_rank):
+            points = info.get("points", 0)
+            streak = info.get("streak", 0)
+            
+            member = guild.get_member(int(user_id)) if guild and str(user_id).isdigit() else None
+            user_display = member.display_name if member else f"User {user_id}"
 
-        if index == 1:
-            rank_color = accent_gold
-        elif index == 2:
-            rank_color = accent_silver
-        elif index == 3:
-            rank_color = accent_bronze
-        else:
-            rank_color = text_white
+            if index == 1:
+                rank_color = accent_gold
+            elif index == 2:
+                rank_color = accent_silver
+            elif index == 3:
+                rank_color = accent_bronze
+            else:
+                rank_color = text_white
 
-        draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=10, fill=card_color)
-        draw.text((40, y_pos + 20), f"#{index}", fill=rank_color, font=font_bold)
-        img.paste(avatar_img, (100, y_pos + 10), avatar_img)
+            draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=10, fill=card_color)
+            pilmoji.text((40, y_pos + 20), f"#{index}", fill=rank_color, font=font_bold)
+            img.paste(avatar_img, (100, y_pos + 10), avatar_img)
 
-        draw.text((160, y_pos + 20), user_display[:22], fill=text_white, font=font_bold)
-        draw.text((width - 340, y_pos + 20), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
-        draw.text((width - 150, y_pos + 20), f"🔥 {streak} ngày", fill=text_sub, font=font_small)
+            pilmoji.text((160, y_pos + 20), user_display[:22], fill=text_white, font=font_bold)
+            pilmoji.text((width - 340, y_pos + 20), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
+            pilmoji.text((width - 150, y_pos + 20), f"🔥 {streak} ngày", fill=text_sub, font=font_small)
 
-        y_pos += card_height + card_gap
+            y_pos += card_height + card_gap
 
     buffer = io.BytesIO()
     img.save(buffer, format="PNG")
