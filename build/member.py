@@ -10,14 +10,15 @@ from database import load_data, get_streak_text, format_points, load_allowed_cha
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
-FONT_BLACK_PATH = "montserrat_black.ttf"
+# Sử dụng font Bold và Medium thanh thoát thay cho Ultra Black
 FONT_BOLD_PATH = "montserrat_bold.ttf"
+FONT_MEDIUM_PATH = "montserrat_medium.ttf"
 
 async def ensure_fonts_async(session: aiohttp.ClientSession):
-    """Tải font Montserrat dạng Nét Đậm Nhất (Black & Bold)"""
+    """Tải font Montserrat dạng Bold & Medium thanh thoát"""
     urls = {
-        FONT_BLACK_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Black.ttf",
-        FONT_BOLD_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf"
+        FONT_BOLD_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf",
+        FONT_MEDIUM_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Medium.ttf"
     }
 
     for path, url in urls.items():
@@ -32,12 +33,12 @@ async def ensure_fonts_async(session: aiohttp.ClientSession):
                 print(f"[CẢNH BÁO] Không thể tải font {path}: {e}")
 
 def get_loaded_fonts():
-    """Load font siêu đậm từ local file"""
+    """Load font chuẩn UI, rõ ràng, không bị quá đậm"""
     try:
-        if os.path.exists(FONT_BLACK_PATH) and os.path.getsize(FONT_BLACK_PATH) > 1000:
-            font_title = ImageFont.truetype(FONT_BLACK_PATH, 30)
-            font_bold = ImageFont.truetype(FONT_BLACK_PATH, 25)
-            font_small = ImageFont.truetype(FONT_BOLD_PATH if os.path.exists(FONT_BOLD_PATH) else FONT_BLACK_PATH, 21)
+        if os.path.exists(FONT_BOLD_PATH) and os.path.getsize(FONT_BOLD_PATH) > 1000:
+            font_title = ImageFont.truetype(FONT_BOLD_PATH, 26)
+            font_bold = ImageFont.truetype(FONT_BOLD_PATH, 22)
+            font_small = ImageFont.truetype(FONT_MEDIUM_PATH if os.path.exists(FONT_MEDIUM_PATH) else FONT_BOLD_PATH, 19)
             return font_title, font_bold, font_small
     except Exception as e:
         print(f"[CẢNH BÁO] Lỗi load font ttf: {e}")
@@ -45,7 +46,7 @@ def get_loaded_fonts():
     default_font = ImageFont.load_default()
     return default_font, default_font, default_font
 
-async def fetch_circle_avatar(session, url, size=(58, 58)):
+async def fetch_circle_avatar(session, url, size=(54, 54)):
     """Tải avatar người dùng và cắt thành hình tròn"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
@@ -69,8 +70,8 @@ async def fetch_circle_avatar(session, url, size=(58, 58)):
     return Image.new("RGBA", size, (120, 120, 120, 255))
 
 async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, guild, current_page, total_pages):
-    card_height = 82
-    card_gap = 12
+    card_height = 76
+    card_gap = 10
     top_margin = 150
     bottom_margin = 25
     width = 950
@@ -79,7 +80,7 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     bg_color = (30, 31, 34, 255)
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
-    text_sub = (220, 225, 235, 255)
+    text_sub = (200, 205, 215, 255)
     accent_gold = (255, 215, 0, 255)
     accent_silver = (215, 220, 225, 255)
     accent_bronze = (230, 126, 34, 255)
@@ -92,28 +93,24 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         
         author_member = guild.get_member(int(author_id)) if guild and str(author_id).isdigit() else None
         author_url = author_member.display_avatar.url if author_member else None
-        author_avatar_task = fetch_circle_avatar(session, author_url, size=(58, 58))
+        author_avatar_task = fetch_circle_avatar(session, author_url, size=(54, 54))
 
         tasks = []
         for uid, _ in page_data:
             m = guild.get_member(int(uid)) if guild and str(uid).isdigit() else None
             url = m.display_avatar.url if m else None
-            tasks.append(fetch_circle_avatar(session, url, size=(58, 58)))
+            tasks.append(fetch_circle_avatar(session, url, size=(54, 54)))
 
         author_avatar = await author_avatar_task
         page_avatars = await asyncio.gather(*tasks)
 
     font_title, font_bold, font_small = get_loaded_fonts()
 
-    # Hàm hỗ trợ vẽ chữ siêu đậm bằng stroke
-    def draw_bold_text(pilmoji_obj, pos, text, fill, font, stroke_w=1):
-        pilmoji_obj.text(pos, text, fill=fill, font=font, stroke_width=stroke_w, stroke_fill=fill)
-
     with Pilmoji(img) as pilmoji:
         # 1. Khung Hạng Cá Nhân
-        draw_bold_text(pilmoji, (25, 10), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title, stroke_w=1)
-        draw.rounded_rectangle([20, 50, width - 20, 132], radius=12, fill=card_color)
-        img.paste(author_avatar, (35, 62), author_avatar)
+        pilmoji.text((25, 12), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
+        draw.rounded_rectangle([20, 50, width - 20, 130], radius=12, fill=card_color)
+        img.paste(author_avatar, (35, 63), author_avatar)
 
         author_name = author_member.display_name if author_member else f"User {author_id}"
         rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
@@ -121,8 +118,8 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         a_streak = author_info.get("streak", 0) if author_info else 0
         author_streak_icon = "🔥" if a_streak >= 3 else "🧊"
 
-        draw_bold_text(pilmoji, (108, 58), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold, stroke_w=1)
-        draw_bold_text(pilmoji, (108, 92), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small, stroke_w=1)
+        pilmoji.text((105, 60), f"{rank_str}  •  {author_name[:22]}", fill=text_white, font=font_bold)
+        pilmoji.text((105, 92), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
 
         # 2. Danh Sách Bảng Xếp Hạng
         y_pos = top_margin
@@ -148,13 +145,24 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
 
             draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=12, fill=card_color)
             
-            # Căn chỉnh vị trí các cột
-            draw_bold_text(pilmoji, (35, y_pos + 25), f"#{index}", fill=rank_color, font=font_bold, stroke_w=1)
-            img.paste(avatar_img, (110, y_pos + 12), avatar_img)
+            # Cột 1: Thứ hạng & Avatar
+            pilmoji.text((35, y_pos + 24), f"#{index}", fill=rank_color, font=font_bold)
+            img.paste(avatar_img, (100, y_pos + 11), avatar_img)
 
-            draw_bold_text(pilmoji, (185, y_pos + 25), user_display[:20], fill=text_white, font=font_bold, stroke_w=1)
-            draw_bold_text(pilmoji, (width - 400, y_pos + 25), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold, stroke_w=1)
-            draw_bold_text(pilmoji, (width - 160, y_pos + 27), f"{streak_icon} {streak} ngày", fill=text_sub, font=font_small, stroke_w=1)
+            # Cột 2: Tên người dùng (Tối đa 16 ký tự để tránh đè vào điểm)
+            pilmoji.text((170, y_pos + 24), user_display[:16], fill=text_white, font=font_bold)
+
+            # Cột 3: Chuỗi ngày (Cố định vị trí lề phải tại x = width - 150)
+            streak_str = f"{streak_icon} {streak} ngày"
+            pilmoji.text((width - 150, y_pos + 25), streak_str, fill=text_sub, font=font_small)
+
+            # Cột 4: Điểm số (Tự động CĂN PHẢI, mở rộng sang trái, dừng lại ở vị trí x = width - 170)
+            points_str = f"{format_points(points)} KiPoints"
+            bbox = font_bold.getbbox(points_str)
+            text_width = bbox[2] - bbox[0]
+            points_x = (width - 170) - text_width
+            
+            pilmoji.text((points_x, y_pos + 24), points_str, fill=accent_gold, font=font_bold)
 
             y_pos += card_height + card_gap
 
