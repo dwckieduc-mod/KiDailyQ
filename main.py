@@ -7,10 +7,9 @@ from database import load_allowed_channels, start_auto_save_loop
 
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
-# Bật Intents mặc định và Intents Member
 intents = discord.Intents.default()
 intents.message_content = True
-intents.members = True  # FIX LỖI HIỂN THỊ ID BẢNG XẾP HẠNG
+intents.members = True
 
 bot = commands.Bot(
     command_prefix=["k.", "K."], 
@@ -38,7 +37,6 @@ async def on_command_error(ctx, error):
 
 @bot.event
 async def on_ready():
-    # Kích hoạt vòng lặp tự động lưu dữ liệu RAM xuống Gist mỗi 15 giây
     start_auto_save_loop(bot)
     print(f"🤖 Bot {bot.user.name} đã kết nối thành công!")
 
@@ -48,6 +46,7 @@ async def main():
         await bot.load_extension("build.set_up")
         await bot.load_extension("build.check")
         await bot.load_extension("build.member")
+        await bot.load_extension("build.rank")
         await bot.load_extension("build.admin")
         await bot.start(BOT_TOKEN)
 
