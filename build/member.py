@@ -10,41 +10,41 @@ from database import load_data, get_streak_text, format_points, load_allowed_cha
 
 DAILY_CHANNEL_ID = os.environ.get("DAILY_CHANNEL_ID", "0")
 
-FONT_BOLD_PATH = "montserratbd.ttf"
-FONT_REGULAR_PATH = "montserrat.ttf"
+FONT_BLACK_PATH = "montserratblack.ttf"
+FONT_EXTRABOLD_PATH = "montserratextrabd.ttf"
 
 async def ensure_fonts_async(session: aiohttp.ClientSession):
-    """Tải font bất đồng bộ qua aiohttp để không làm đóng băng bot"""
-    if not os.path.exists(FONT_BOLD_PATH):
+    """Tải font Montserrat phiên bản Black & ExtraBold để chữ siêu đậm"""
+    if not os.path.exists(FONT_BLACK_PATH):
         try:
-            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf"
+            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Black.ttf"
             async with session.get(url) as resp:
                 if resp.status == 200:
                     data = await resp.read()
-                    with open(FONT_BOLD_PATH, "wb") as f:
+                    with open(FONT_BLACK_PATH, "wb") as f:
                         f.write(data)
         except Exception as e:
-            print(f"[CẢNH BÁO] Không thể tải Montserrat-Bold: {e}")
+            print(f"[CẢNH BÁO] Không thể tải Montserrat-Black: {e}")
 
-    if not os.path.exists(FONT_REGULAR_PATH):
+    if not os.path.exists(FONT_EXTRABOLD_PATH):
         try:
-            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Regular.ttf"
+            url = "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-ExtraBold.ttf"
             async with session.get(url) as resp:
                 if resp.status == 200:
                     data = await resp.read()
-                    with open(FONT_REGULAR_PATH, "wb") as f:
+                    with open(FONT_EXTRABOLD_PATH, "wb") as f:
                         f.write(data)
         except Exception as e:
-            print(f"[CẢNH BÁO] Không thể tải Montserrat-Regular: {e}")
+            print(f"[CẢNH BÁO] Không thể tải Montserrat-ExtraBold: {e}")
 
 def get_loaded_fonts():
-    """Load font từ file local, nếu lỗi sẽ tự động dùng font mặc định"""
+    """Load font siêu đậm từ file local"""
     try:
-        if os.path.exists(FONT_BOLD_PATH) and os.path.exists(FONT_REGULAR_PATH):
+        if os.path.exists(FONT_BLACK_PATH) and os.path.exists(FONT_EXTRABOLD_PATH):
             return (
-                ImageFont.truetype(FONT_BOLD_PATH, 24),
-                ImageFont.truetype(FONT_BOLD_PATH, 22),
-                ImageFont.truetype(FONT_REGULAR_PATH, 18)
+                ImageFont.truetype(FONT_BLACK_PATH, 28),     # Title
+                ImageFont.truetype(FONT_BLACK_PATH, 25),     # Bold Main Text
+                ImageFont.truetype(FONT_EXTRABOLD_PATH, 21)  # Subtext
             )
     except Exception as e:
         print(f"[CẢNH BÁO] Lỗi load font ttf: {e}")
@@ -52,7 +52,7 @@ def get_loaded_fonts():
     default_font = ImageFont.load_default()
     return default_font, default_font, default_font
 
-async def fetch_circle_avatar(session, url, size=(52, 52)):
+async def fetch_circle_avatar(session, url, size=(56, 56)):
     """Tải avatar người dùng và cắt thành hình tròn"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
@@ -86,10 +86,10 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
     bg_color = (30, 31, 34, 255)
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
-    text_sub = (180, 185, 195, 255)
-    accent_gold = (241, 196, 15, 255)
-    accent_silver = (189, 195, 199, 255)
-    accent_bronze = (211, 84, 0, 255)
+    text_sub = (220, 225, 235, 255)  # Tăng độ sáng chữ phụ
+    accent_gold = (255, 215, 0, 255)  # Vàng kim sáng
+    accent_silver = (210, 215, 220, 255)
+    accent_bronze = (230, 126, 34, 255)
 
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
@@ -99,13 +99,13 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         
         author_member = guild.get_member(int(author_id)) if guild and str(author_id).isdigit() else None
         author_url = author_member.display_avatar.url if author_member else None
-        author_avatar_task = fetch_circle_avatar(session, author_url, size=(52, 52))
+        author_avatar_task = fetch_circle_avatar(session, author_url, size=(56, 56))
 
         tasks = []
         for uid, _ in page_data:
             m = guild.get_member(int(uid)) if guild and str(uid).isdigit() else None
             url = m.display_avatar.url if m else None
-            tasks.append(fetch_circle_avatar(session, url, size=(52, 52)))
+            tasks.append(fetch_circle_avatar(session, url, size=(56, 56)))
 
         author_avatar = await author_avatar_task
         page_avatars = await asyncio.gather(*tasks)
@@ -114,9 +114,9 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
 
     with Pilmoji(img) as pilmoji:
         # 1. Khung Hạng Cá Nhân
-        pilmoji.text((25, 15), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
+        pilmoji.text((25, 12), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
         draw.rounded_rectangle([20, 50, width - 20, 130], radius=12, fill=card_color)
-        img.paste(author_avatar, (35, 64), author_avatar)
+        img.paste(author_avatar, (35, 62), author_avatar)
 
         author_name = author_member.display_name if author_member else f"User {author_id}"
         rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
@@ -124,8 +124,8 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
         a_streak = author_info.get("streak", 0) if author_info else 0
         author_streak_icon = "🔥" if a_streak >= 3 else "🧊"
 
-        pilmoji.text((105, 62), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
-        pilmoji.text((105, 94), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
+        pilmoji.text((105, 58), f"{rank_str}  •  {author_name[:25]}", fill=text_white, font=font_bold)
+        pilmoji.text((105, 92), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
 
         # 2. Danh Sách Bảng Xếp Hạng
         y_pos = top_margin
@@ -150,12 +150,12 @@ async def draw_leaderboard(page_data, author_id, author_rank_idx, author_info, g
             streak_icon = "🔥" if streak >= 3 else "🧊"
 
             draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=12, fill=card_color)
-            pilmoji.text((40, y_pos + 26), f"#{index}", fill=rank_color, font=font_bold)
-            img.paste(avatar_img, (110, y_pos + 14), avatar_img)
+            pilmoji.text((35, y_pos + 24), f"#{index}", fill=rank_color, font=font_bold)
+            img.paste(avatar_img, (110, y_pos + 12), avatar_img)
 
-            pilmoji.text((180, y_pos + 26), user_display[:20], fill=text_white, font=font_bold)
-            pilmoji.text((width - 380, y_pos + 26), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
-            pilmoji.text((width - 160, y_pos + 28), f"{streak_icon} {streak} ngày", fill=text_sub, font=font_small)
+            pilmoji.text((180, y_pos + 24), user_display[:20], fill=text_white, font=font_bold)
+            pilmoji.text((width - 390, y_pos + 24), f"{format_points(points)} KiPoints", fill=accent_gold, font=font_bold)
+            pilmoji.text((width - 160, y_pos + 26), f"{streak_icon} {streak} ngày", fill=text_sub, font=font_small)
 
             y_pos += card_height + card_gap
 
@@ -509,4 +509,3 @@ class MemberCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(MemberCog(bot))
-  
