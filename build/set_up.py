@@ -21,23 +21,20 @@ class UnlockView(discord.ui.View):
                 ephemeral=True
             )
 
-        # PHẢN HỒI TỨC THÌ CHO DISCORD (FIX LỖI CHẬM PHẢN HỒI / TIMEOUT 3S)
-        await interaction.response.defer()
+        # CẬP NHẬT TRẠNG THÁI NÚT NGAY TRONG 1 REQUEST (Không dùng defer)
+        button.disabled = True
+        button.label = "🔓 Kênh đã mở khóa"
+        button.style = discord.ButtonStyle.secondary
+        await interaction.response.edit_message(view=self)
 
         channel = interaction.channel
         overwrite = channel.overwrites_for(interaction.guild.default_role)
         overwrite.send_messages = True
         await channel.set_permissions(interaction.guild.default_role, overwrite=overwrite)
 
-        # Vô hiệu hóa nút sau khi bấm thành công
-        button.disabled = True
-        button.label = "🔓 Kênh đã mở khóa"
-        button.style = discord.ButtonStyle.secondary
-        await interaction.message.edit(view=self)
-
         # Gửi thông báo mở khóa thành công
         embed = discord.Embed(
-            title="🔓 KÊNH ĐÃ MỞ",
+            title="🔓 KÊNH ĐÃ MỜ",
             description=f"Bắt đầu làm nhiệm vụ nào!",
             color=discord.Color.green()
         )
@@ -220,4 +217,5 @@ class SetupCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(SetupCog(bot))
+            
         
