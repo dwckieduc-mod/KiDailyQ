@@ -3,13 +3,17 @@ import io
 import asyncio
 import aiohttp
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
 from database import load_data, get_streak_text, format_points
 
 FONT_BOLD_PATH = "montserrat_bold.ttf"
 FONT_MEDIUM_PATH = "montserrat_medium.ttf"
+
+# Lấy ID Server chính và ID Kênh lưu trữ từ biến môi trường
+GUILD_ID = int(os.environ.get("GUILD_ID", 0))
+STORAGE_CHANNEL_ID = int(os.environ.get("STORAGE_CHANNEL_ID", 0))
 
 # --- BỘ NHỚ TẠM (CACHE) ---
 AVATAR_CACHE = {}
@@ -84,6 +88,20 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
         print(f"[CẢNH BÁO] Lỗi tải avatar ({url}): {e}")
 
     return Image.new("RGBA", size, (120, 120, 120, 255))
+
+
+async def fetch_member_safe(guild: discord.Guild, user_id):
+    """Lấy thành viên từ Guild theo ID, nếu chưa cache thì fetch trực tiếp qua API"""
+    if not guild or not str(user_id).isdigit():
+        return None
+    uid = int(user_id)
+    member = guild.get_member(uid)
+    if member:
+        return member
+    try:
+        return await guild.fetch_member(uid)
+    except Exception:
+        return None
 
 
 def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, author_info, author_avatar, guild_member_names, current_page, total_pages):
@@ -164,43 +182,60 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
             y_pos += card_height + card_gap
 
     buffer = io.BytesIO()
-    # TỐI ƯU CỰC ĐẠI: Đặt compress_level=1 giúp xuất file cực nhanh (giảm từ 2.5s xuống 0.08s)
     img.save(buffer, format="PNG", compress_level=1)
     buffer.seek(0)
     return buffer
 
 
 class LeaderboardView(discord.ui.View):
-    def __init__(self, data, author_id, guild, per_page=10):
+    def __init__(self, bot: commands.Bot, data, author_id, session: aiohttp.ClientSession, per_page=10):
         super().__init__(timeout=60)
+        self.bot = bot
         self.data = data
         self.author_id = author_id
-        self.guild = guild
+        self.session = session
         self.per_page = per_page
         self.current_page = 1
         self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
         self.message = None
         
-        # CACHE TRỰC TIẾP FILE ẢNH ĐÃ VẼ THEO TRANG
-        self.page_cache = {}
-        
+        # Cache liên kết CDN của ảnh sau khi gửi vào kênh lưu trữ
+        self.url_cache = {}
         self.update_buttons()
 
     def update_buttons(self):
         self.children[0].disabled = (self.current_page == 1)
         self.children[1].disabled = (self.current_page == self.total_pages)
 
-    async def get_page_file_and_embed(self):
-        # NẾU TRANG ĐÃ VẼ RỒI -> TRẢ VỀ TỨC THÌ TỪ RAM (0.01s)
-        if self.current_page in self.page_cache:
-            raw_bytes = self.page_cache[self.current_page]
-            file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
-            embed = discord.Embed(color=discord.Color.gold())
-            embed.set_image(url="attachment://leaderboard.png")
-            embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
-            return file, embed
+    async def get_target_guild_and_channel(self):
+        """Lấy thông tin Guild gốc và Channel lưu trữ ảnh theo ID môi trường"""
+        guild = self.bot.get_guild(GUILD_ID)
+        if not guild and GUILD_ID:
+            try:
+                guild = await self.bot.fetch_guild(GUILD_ID)
+            except Exception:
+                pass
 
-        # NẾU TRANG CHƯA VẼ -> TIẾN HÀNH VẼ
+        storage_channel = self.bot.get_channel(STORAGE_CHANNEL_ID)
+        if not storage_channel and STORAGE_CHANNEL_ID:
+            try:
+                storage_channel = await self.bot.fetch_channel(STORAGE_CHANNEL_ID)
+            except Exception:
+                pass
+
+        return guild, storage_channel
+
+    async def get_page_embed(self):
+        # 1. Trả về Embed dùng URL đã lưu nếu trang đã tạo ảnh trước đó
+        if self.current_page in self.url_cache:
+            embed = discord.Embed(color=discord.Color.gold())
+            embed.set_image(url=self.url_cache[self.current_page])
+            embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
+            return embed, None
+
+        # 2. Lấy Server gốc & Kênh lưu trữ
+        target_guild, storage_channel = await self.get_target_guild_and_channel()
+
         author_rank_idx = None
         author_info = None
         for idx, (uid, info) in enumerate(self.data, start=1):
@@ -213,27 +248,29 @@ class LeaderboardView(discord.ui.View):
         end_idx = start_idx + self.per_page
         page_data = self.data[start_idx:end_idx]
 
-        async with aiohttp.ClientSession() as session:
-            author_member = self.guild.get_member(int(self.author_id)) if self.guild and str(self.author_id).isdigit() else None
-            author_url = author_member.display_avatar.url if author_member else None
-            author_avatar_task = fetch_circle_avatar(session, self.author_id, author_url, size=(54, 54))
+        # Fetch thông tin người dùng từ Server gốc
+        author_member = await fetch_member_safe(target_guild, self.author_id)
+        author_url = author_member.display_avatar.url if author_member else None
+        author_avatar_task = fetch_circle_avatar(self.session, self.author_id, author_url, size=(54, 54))
 
-            tasks = []
-            guild_member_names = {}
+        member_tasks = [fetch_member_safe(target_guild, uid) for uid, _ in page_data]
+        page_members = await asyncio.gather(*member_tasks)
 
-            if author_member:
-                guild_member_names[str(self.author_id)] = author_member.display_name
+        guild_member_names = {}
+        if author_member:
+            guild_member_names[str(self.author_id)] = author_member.display_name
 
-            for uid, _ in page_data:
-                m = self.guild.get_member(int(uid)) if self.guild and str(uid).isdigit() else None
-                url = m.display_avatar.url if m else None
-                if m:
-                    guild_member_names[str(uid)] = m.display_name
-                tasks.append(fetch_circle_avatar(session, uid, url, size=(54, 54)))
+        avatar_tasks = []
+        for (uid, _), member in zip(page_data, page_members):
+            url = member.display_avatar.url if member else None
+            if member:
+                guild_member_names[str(uid)] = member.display_name
+            avatar_tasks.append(fetch_circle_avatar(self.session, uid, url, size=(54, 54)))
 
-            author_avatar = await author_avatar_task
-            page_avatars = await asyncio.gather(*tasks)
+        author_avatar = await author_avatar_task
+        page_avatars = await asyncio.gather(*avatar_tasks)
 
+        # 3. Vẽ ảnh
         buffer = await asyncio.to_thread(
             draw_leaderboard_sync,
             page_data=page_data,
@@ -247,14 +284,32 @@ class LeaderboardView(discord.ui.View):
             total_pages=self.total_pages,
         )
 
-        raw_bytes = buffer.getvalue()
-        self.page_cache[self.current_page] = raw_bytes  # Lưu byte ảnh vào RAM của Session View này
+        file = discord.File(fp=buffer, filename=f"leaderboard_p{self.current_page}.png")
 
-        file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
+        # 4. Upload ảnh tới kênh lưu trữ để lấy URL trực tiếp
+        image_url = None
+        if storage_channel:
+            try:
+                storage_msg = await storage_channel.send(file=file)
+                if storage_msg.attachments:
+                    image_url = storage_msg.attachments[0].url
+            except Exception as e:
+                print(f"[CẢNH BÁO] Không gửi được ảnh đến kênh lưu trữ: {e}")
+
         embed = discord.Embed(color=discord.Color.gold())
-        embed.set_image(url="attachment://leaderboard.png")
+
+        if image_url:
+            self.url_cache[self.current_page] = image_url
+            embed.set_image(url=image_url)
+            file_to_send = None
+        else:
+            # Dự phòng khi không tìm thấy channel lưu trữ
+            file.fp.seek(0)
+            embed.set_image(url=f"attachment://leaderboard_p{self.current_page}.png")
+            file_to_send = file
+
         embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
-        return file, embed
+        return embed, file_to_send
 
     @discord.ui.button(label="◀ Trang trước", style=discord.ButtonStyle.primary)
     async def prev_page(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -264,8 +319,12 @@ class LeaderboardView(discord.ui.View):
         await interaction.response.defer()
         self.current_page -= 1
         self.update_buttons()
-        file, embed = await self.get_page_file_and_embed()
-        await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
+        embed, file = await self.get_page_embed()
+
+        if file:
+            await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
+        else:
+            await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[], embed=embed, view=self)
 
     @discord.ui.button(label="Trang sau ▶", style=discord.ButtonStyle.primary)
     async def next_page(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -275,8 +334,12 @@ class LeaderboardView(discord.ui.View):
         await interaction.response.defer()
         self.current_page += 1
         self.update_buttons()
-        file, embed = await self.get_page_file_and_embed()
-        await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
+        embed, file = await self.get_page_embed()
+
+        if file:
+            await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
+        else:
+            await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[], embed=embed, view=self)
 
     async def on_timeout(self):
         for child in self.children:
@@ -291,10 +354,15 @@ class LeaderboardView(discord.ui.View):
 class RankCog(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.session = None
 
     async def cog_load(self):
-        async with aiohttp.ClientSession() as session:
-            await init_fonts_and_download(session)
+        self.session = aiohttp.ClientSession()
+        await init_fonts_and_download(self.session)
+
+    async def cog_unload(self):
+        if self.session:
+            await self.session.close()
 
     @commands.command(name="profile", aliases=["pf"])
     async def point(self, ctx, member: discord.Member = None):
@@ -362,12 +430,16 @@ class RankCog(commands.Cog):
                 await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
                 return
 
-            view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
+            view = LeaderboardView(self.bot, sorted_users, ctx.author.id, self.session, per_page=per_page)
             view.current_page = page
             view.update_buttons()
 
-            file, embed = await view.get_page_file_and_embed()
-            message = await ctx.send(file=file, embed=embed, view=view)
+            embed, file = await view.get_page_embed()
+            if file:
+                message = await ctx.send(file=file, embed=embed, view=view)
+            else:
+                message = await ctx.send(embed=embed, view=view)
+
             view.message = message
         except Exception as e:
             await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `top`: `{e}`")
@@ -375,4 +447,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
-    
+            
