@@ -12,7 +12,7 @@ class AdminCog(commands.Cog):
     async def add_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
-        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0, "checkin_today": 0})
         
         user_info["points"] += amount
         data[user_id] = user_info
@@ -42,7 +42,7 @@ class AdminCog(commands.Cog):
     async def remove_diem(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
-        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0, "checkin_today": 0})
         
         user_info["points"] = max(0, user_info["points"] - amount)
         data[user_id] = user_info
@@ -72,7 +72,7 @@ class AdminCog(commands.Cog):
     async def add_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
-        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0, "checkin_today": 0})
         
         user_info["streak"] = max(0, user_info.get("streak", 0) + amount)
         
@@ -110,7 +110,7 @@ class AdminCog(commands.Cog):
     async def remove_streak(self, ctx, member: discord.Member, amount: int):
         user_id = str(member.id)
         data = await load_data()
-        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
+        user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0, "checkin_today": 0})
         
         user_info["streak"] = max(0, user_info.get("streak", 0) - amount)
         data[user_id] = user_info
@@ -135,28 +135,32 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
+    # ==================== LỆNH RESET (BỔ SUNG OPTIONS: ALL & ALL_STREAK) ====================
     @commands.command(name="reset", aliases=["rs"])
     @commands.has_permissions(administrator=True)
     async def reset_user(self, ctx, target: str = None):
         if not target:
             embed = discord.Embed(
                 title="⚠️ SAI CÚ PHÁP LỆNH RESET",
-                description="Vui lòng nhập đúng:\n• `k.reset @User` (Reset 1 thành viên)\n• `k.reset all` (Reset toàn bộ hệ thống)",
+                description=(
+                    "Vui lòng nhập đúng:\n"
+                    "• `k.reset @User` (Reset toàn bộ thông số 1 thành viên)\n"
+                    "• `k.reset all` (Reset toàn bộ hệ thống)\n"
+                    "• `k.reset all_streak` (Reset Streak của tất cả thành viên về 0)"
+                ),
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
             return
 
         data = await load_data()
-        if target.lower() == "all":
+        target_clean = target.lower()
+
+        # TRƯỜNG HỢP 1: Reset toàn bộ hệ thống
+        if target_clean == "all":
             if not data:
-                embed = discord.Embed(
-                    title="📋 KHÔNG CÓ DỮ LIỆU",
-                    description="Hệ thống hiện tại chưa có dữ liệu nào để reset!",
-                    color=discord.Color.gold()
-                )
-                await ctx.send(embed=embed)
-                return
+                embed = discord.Embed(title="📋 KHÔNG CÓ DỮ LIỆU", description="Hệ thống hiện tại chưa có dữ liệu nào để reset!", color=discord.Color.gold())
+                return await ctx.send(embed=embed)
 
             await save_data({})
             embed = discord.Embed(
@@ -165,9 +169,27 @@ class AdminCog(commands.Cog):
                 color=discord.Color.red()
             )
             embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
-            await ctx.send(embed=embed)
-            return
+            return await ctx.send(embed=embed)
 
+        # TRƯỜNG HỢP 2: Reset chuỗi streak của tất cả mọi người
+        if target_clean == "all_streak":
+            if not data:
+                embed = discord.Embed(title="📋 KHÔNG CÓ DỮ LIỆU", description="Hệ thống hiện tại chưa có dữ liệu nào để reset streak!", color=discord.Color.gold())
+                return await ctx.send(embed=embed)
+
+            for uid in data:
+                data[uid]["streak"] = 0
+
+            await save_data(data)
+            embed = discord.Embed(
+                title="🔥 RESET STREAK TOÀN BỘ THÀNH CÔNG",
+                description="Chuỗi Streak của **TẤT CẢ** thành viên trong hệ thống đã được đưa về 0 ngày.\n*(Số điểm KiPoints và nhiệm vụ hoàn thành vẫn được giữ nguyên)*",
+                color=discord.Color.orange()
+            )
+            embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
+            return await ctx.send(embed=embed)
+
+        # TRƯỜNG HỢP 3: Reset 1 thành viên cụ thể
         try:
             member = await commands.MemberConverter().convert(ctx, target)
             user_id = str(member.id)
@@ -190,7 +212,7 @@ class AdminCog(commands.Cog):
         except commands.BadArgument:
             embed = discord.Embed(
                 title="⚠️ ĐỐI TƯỢNG KHÔNG HỢP LỆ",
-                description="Vui lòng tag `@User` hoặc nhập `all` để reset toàn bộ!",
+                description="Vui lòng tag `@User`, nhập `all` (reset toàn bộ) hoặc `all_streak` (reset streak toàn bộ)!",
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
@@ -239,6 +261,9 @@ class AdminCog(commands.Cog):
         user_info["total_quests"] = max(0, user_info.get("total_quests", 0) - 1)
         user_info["streak"] = restored_streak
         user_info["last_date"] = str(yesterday)
+        
+        # Trừ lượt điểm danh ngày hôm nay (Tối thiểu là 0)
+        user_info["checkin_today"] = max(0, user_info.get("checkin_today", 0) - 1)
 
         data[user_id] = user_info
         await save_data(data)
@@ -267,4 +292,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-                    
+                
