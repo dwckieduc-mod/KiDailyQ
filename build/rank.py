@@ -6,12 +6,12 @@ import discord
 from discord.ext import commands
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
-from database import load_data, get_streak_text, format_points
+from database import load_data, save_data, get_streak_text, format_points
 
 FONT_BOLD_PATH = "montserrat_bold.ttf"
 FONT_MEDIUM_PATH = "montserrat_medium.ttf"
 
-# --- BỘ NHỚ TẠM (CACHE) ---
+# --- BỘ NHỚ TẠM (CACHE AVATAR ĐÃ CẮT TRÒN TRONG RAM) ---
 AVATAR_CACHE = {}
 LOADED_FONTS = {}
 
@@ -53,7 +53,7 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
 
 
 async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
-    """Tải avatar và Cache vào RAM"""
+    """Tải avatar và Cache ảnh ĐÃ CẮT TRÒN vào RAM"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
 
@@ -75,7 +75,7 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
                 output = Image.new("RGBA", size, (0, 0, 0, 0))
                 output.paste(avatar, (0, 0), mask)
 
-                if len(AVATAR_CACHE) > 300:
+                if len(AVATAR_CACHE) > 500:
                     AVATAR_CACHE.clear()
 
                 AVATAR_CACHE[cache_key] = output
@@ -86,8 +86,8 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
     return Image.new("RGBA", size, (120, 120, 120, 255))
 
 
-def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, author_info, author_avatar, guild_member_names, current_page, total_pages):
-    """Hàm vẽ ảnh thuần Sync (Chạy trên Thread riêng)"""
+def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, author_info, author_avatar, current_page, total_pages):
+    """Vẽ bảng xếp hạng trực tiếp từ dữ liệu DB đã cache"""
     card_height = 76
     card_gap = 10
     top_margin = 150
@@ -116,7 +116,8 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
         draw.rounded_rectangle([20, 50, width - 20, 130], radius=12, fill=card_color)
         img.paste(author_avatar, (35, 63), author_avatar)
 
-        author_name = guild_member_names.get(str(author_id), f"User {author_id}")
+        # Lấy tên tác giả trực tiếp từ DB
+        author_name = author_info.get("name", f"User {author_id}") if author_info else f"User {author_id}"
         rank_str = f"#{author_rank_idx}" if author_rank_idx else "Chưa xếp hạng"
         a_points = author_info.get("points", 0) if author_info else 0
         a_streak = author_info.get("streak", 0) if author_info else 0
@@ -132,7 +133,8 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
         for index, ((user_id, info), avatar_img) in enumerate(zip(page_data, page_avatars), start=start_rank):
             points = info.get("points", 0)
             streak = info.get("streak", 0)
-            user_display = guild_member_names.get(str(user_id), f"User {user_id}")
+            # Lấy tên người dùng trực tiếp từ DB, không cần get_member
+            user_display = info.get("name", f"User {user_id}")
 
             if index == 1:
                 rank_color = accent_gold
@@ -164,26 +166,21 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
             y_pos += card_height + card_gap
 
     buffer = io.BytesIO()
-    # TỐI ƯU CỰC ĐẠI: Đặt compress_level=1 giúp xuất file cực nhanh (giảm từ 2.5s xuống 0.08s)
     img.save(buffer, format="PNG", compress_level=1)
     buffer.seek(0)
     return buffer
 
 
 class LeaderboardView(discord.ui.View):
-    def __init__(self, data, author_id, guild, per_page=10):
+    def __init__(self, data, author_id, per_page=10):
         super().__init__(timeout=60)
         self.data = data
         self.author_id = author_id
-        self.guild = guild
         self.per_page = per_page
         self.current_page = 1
         self.total_pages = max(1, (len(data) + per_page - 1) // per_page)
         self.message = None
-        
-        # CACHE TRỰC TIẾP FILE ẢNH ĐÃ VẼ THEO TRANG
         self.page_cache = {}
-        
         self.update_buttons()
 
     def update_buttons(self):
@@ -191,7 +188,6 @@ class LeaderboardView(discord.ui.View):
         self.children[1].disabled = (self.current_page == self.total_pages)
 
     async def get_page_file_and_embed(self):
-        # NẾU TRANG ĐÃ VẼ RỒI -> TRẢ VỀ TỨC THÌ TỪ RAM (0.01s)
         if self.current_page in self.page_cache:
             raw_bytes = self.page_cache[self.current_page]
             file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
@@ -200,7 +196,6 @@ class LeaderboardView(discord.ui.View):
             embed.set_footer(text=f"Trang {self.current_page}/{self.total_pages} • Tổng: {len(self.data)} thành viên")
             return file, embed
 
-        # NẾU TRANG CHƯA VẼ -> TIẾN HÀNH VẼ
         author_rank_idx = None
         author_info = None
         for idx, (uid, info) in enumerate(self.data, start=1):
@@ -214,21 +209,13 @@ class LeaderboardView(discord.ui.View):
         page_data = self.data[start_idx:end_idx]
 
         async with aiohttp.ClientSession() as session:
-            author_member = self.guild.get_member(int(self.author_id)) if self.guild and str(self.author_id).isdigit() else None
-            author_url = author_member.display_avatar.url if author_member else None
+            # Lấy URL avatar trực tiếp từ dữ liệu DB
+            author_url = author_info.get("avatar_url") if author_info else None
             author_avatar_task = fetch_circle_avatar(session, self.author_id, author_url, size=(54, 54))
 
             tasks = []
-            guild_member_names = {}
-
-            if author_member:
-                guild_member_names[str(self.author_id)] = author_member.display_name
-
-            for uid, _ in page_data:
-                m = self.guild.get_member(int(uid)) if self.guild and str(uid).isdigit() else None
-                url = m.display_avatar.url if m else None
-                if m:
-                    guild_member_names[str(uid)] = m.display_name
+            for uid, info in page_data:
+                url = info.get("avatar_url")
                 tasks.append(fetch_circle_avatar(session, uid, url, size=(54, 54)))
 
             author_avatar = await author_avatar_task
@@ -242,13 +229,12 @@ class LeaderboardView(discord.ui.View):
             author_rank_idx=author_rank_idx,
             author_info=author_info,
             author_avatar=author_avatar,
-            guild_member_names=guild_member_names,
             current_page=self.current_page,
             total_pages=self.total_pages,
         )
 
         raw_bytes = buffer.getvalue()
-        self.page_cache[self.current_page] = raw_bytes  # Lưu byte ảnh vào RAM của Session View này
+        self.page_cache[self.current_page] = raw_bytes
 
         file = discord.File(fp=io.BytesIO(raw_bytes), filename="leaderboard.png")
         embed = discord.Embed(color=discord.Color.gold())
@@ -278,15 +264,6 @@ class LeaderboardView(discord.ui.View):
         file, embed = await self.get_page_file_and_embed()
         await interaction.followup.edit_message(message_id=interaction.message.id, attachments=[file], embed=embed, view=self)
 
-    async def on_timeout(self):
-        for child in self.children:
-            child.disabled = True
-        if self.message:
-            try:
-                await self.message.edit(view=self)
-            except Exception:
-                pass
-
 
 class RankCog(commands.Cog):
     def __init__(self, bot):
@@ -296,58 +273,23 @@ class RankCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             await init_fonts_and_download(session)
 
-    @commands.command(name="profile", aliases=["pf"])
-    async def point(self, ctx, member: discord.Member = None):
-        try:
-            target = member or ctx.author
-            user_id = str(target.id)
+    # Hàm trợ giúp: Tự động cập nhật Tên và Avatar vào DB mỗi khi người dùng tương tác
+    async def update_user_profile(self, user: discord.User | discord.Member):
+        data = await load_data()
+        user_id = str(user.id)
+        if user_id not in data:
+            data[user_id] = {"points": 0, "last_date": "", "streak": 0, "total_quests": 0}
 
-            data = await load_data()
-            user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
-
-            points = user_info.get("points", 0)
-            streak = user_info.get("streak", 0)
-            total_quests = user_info.get("total_quests", 0)
-            last_date = user_info.get("last_date") or "Chưa điểm danh"
-
-            rank_str = "Chưa xếp hạng"
-            if data:
-                sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
-                for idx, (uid, info) in enumerate(sorted_users, start=1):
-                    if uid == user_id:
-                        if idx == 1:
-                            rank_str = "🥇 Top 1"
-                        elif idx == 2:
-                            rank_str = "🥈 Top 2"
-                        elif idx == 3:
-                            rank_str = "🥉 Top 3"
-                        else:
-                            rank_str = f"#{idx} / {len(sorted_users)}"
-                        break
-
-            embed = discord.Embed(
-                title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
-                description=f"Bảng thống kê hoạt động của {target.mention}",
-                color=discord.Color.purple()
-            )
-
-            embed.set_thumbnail(url=target.display_avatar.url)
-            embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
-
-            embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-            embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints", inline=True)
-            embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
-            embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
-            embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
-
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
-        except Exception as e:
-            await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `profile`: `{e}`")
+        data[user_id]["name"] = user.display_name
+        data[user_id]["avatar_url"] = user.display_avatar.url
+        await save_data(data)
 
     @commands.command(name="top", aliases=["t"])
     async def top(self, ctx, page: int = 1):
         try:
+            # Tự động cập nhật thông tin người gọi lệnh
+            await self.update_user_profile(ctx.author)
+
             data = await load_data()
             if not data:
                 await ctx.send("📋 Chưa có dữ liệu điểm danh nào trong hệ thống!")
@@ -362,7 +304,7 @@ class RankCog(commands.Cog):
                 await ctx.send(f"⚠️ Trang không hợp lệ! Vui lòng chọn trang từ **1** đến **{total_pages}**.")
                 return
 
-            view = LeaderboardView(sorted_users, ctx.author.id, ctx.guild, per_page=per_page)
+            view = LeaderboardView(sorted_users, ctx.author.id, per_page=per_page)
             view.current_page = page
             view.update_buttons()
 
