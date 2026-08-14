@@ -48,8 +48,6 @@ async def main():
         await bot.load_extension("build.member")
         await bot.load_extension("build.rank")
         await bot.load_extension("build.admin")
-        await bot.load_extension("font.montserrat_bold")
-        await bot.load_extension("font.montserrat_medium")
         await bot.start(BOT_TOKEN)
 
 if __name__ == "__main__":
