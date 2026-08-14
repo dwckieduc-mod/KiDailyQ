@@ -53,7 +53,7 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
 
 
 async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
-    """Tải avatar, cắt tròn và Cache vào RAM hỗ trợ đa kích thước"""
+    """Tải avatar, cắt tròn và Cache vào RAM"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
 
@@ -86,52 +86,78 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
     return Image.new("RGBA", size, (120, 120, 120, 255))
 
 
-# ==================== HÀM VẼ THẺ PROFILE CÁ NHÂN ====================
+# ==================== HÀM VẼ PROFILE MẪU MỚI ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
-    """Vẽ thẻ Profile đẹp mắt đồng bộ với bảng xếp hạng (Chạy trên Thread riêng)"""
+    """Vẽ thẻ Profile chính xác theo hình ảnh mẫu"""
     width = 850
-    height = 310
+    height = 270
     bg_color = (30, 31, 34, 255)
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
     text_sub = (200, 205, 215, 255)
-    accent_gold = (255, 215, 0, 255)
 
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    font_title = LOADED_FONTS.get("title")
+    # 1. Khung Thẻ Profile Chính (Bo góc)
+    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=16, fill=card_color)
+
+    # 2. Load & Ghép Banner phía trên
+    banner_height = 130
+    banner_path = "banner.png"
+    if not os.path.exists(banner_path):
+        banner_path = "font/banner.png"
+
+    if os.path.exists(banner_path):
+        try:
+            banner_img = Image.open(banner_path).convert("RGBA")
+            banner_img = banner_img.resize((width - 30, banner_height), Image.Resampling.LANCZOS)
+        except Exception:
+            banner_img = Image.new("RGBA", (width - 30, banner_height), (70, 90, 120, 255))
+    else:
+        banner_img = Image.new("RGBA", (width - 30, banner_height), (70, 90, 120, 255))
+
+    # Bo góc trên cho Banner
+    mask_banner = Image.new("L", (width - 30, banner_height), 0)
+    draw_mb = ImageDraw.Draw(mask_banner)
+    draw_mb.rounded_rectangle([0, 0, width - 30, banner_height + 20], radius=16, fill=255)
+    img.paste(banner_img, (15, 15), mask_banner)
+
+    # 3. Avatar Hình Tròn Có Viền Đen Chèn Đè
+    avatar_size = 115
+    border_width = 6
+    avatar_x = 45
+    avatar_y = 35
+
+    avatar_img = avatar_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+
+    # Viền màu đen đậm bao ngoài Avatar
+    outer_size = avatar_size + (border_width * 2)
+    outer_ring = Image.new("RGBA", (outer_size, outer_size), (0, 0, 0, 0))
+    draw_ring = ImageDraw.Draw(outer_ring)
+    draw_ring.ellipse((0, 0, outer_size - 1, outer_size - 1), fill=(24, 25, 28, 255))
+
+    img.paste(outer_ring, (avatar_x - border_width, avatar_y - border_width), outer_ring)
+    img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
+
+    # 4. Hiển thị Thông số bên dưới
     font_bold = LOADED_FONTS.get("bold")
     font_small = LOADED_FONTS.get("small")
 
-    # 1. Khung Thẻ Profile
-    draw.rounded_rectangle([20, 20, width - 20, height - 20], radius=16, fill=card_color)
-
-    # 2. Dán Avatar (Kích thước lớn 110x110)
-    img.paste(avatar_img, (45, 45), avatar_img)
+    points = user_info.get("points", 0)
+    streak = user_info.get("streak", 0)
+    total_quests = user_info.get("total_quests", 0)
+    last_date = user_info.get("last_date") or "Chưa điểm danh"
+    streak_icon = "🔥" if streak >= 3 else "🧊"
 
     with Pilmoji(img) as pilmoji:
-        # Header: Tên & Thứ Hạng
-        pilmoji.text((175, 45), target_name[:20], fill=text_white, font=font_title)
-        pilmoji.text((175, 85), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
+        # Hàng 1
+        pilmoji.text((50, 165), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
+        pilmoji.text((440, 165), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
 
-        # Đường kẻ phân cách
-        draw.line([(45, 175), (width - 45, 175)], fill=(60, 63, 68, 255), width=2)
-
-        # Lấy thông số người dùng
-        points = user_info.get("points", 0)
-        streak = user_info.get("streak", 0)
-        total_quests = user_info.get("total_quests", 0)
-        last_date = user_info.get("last_date") or "Chưa điểm danh"
-        streak_icon = "🔥" if streak >= 3 else "🧊"
-
-        # Cột Bên Trái
-        pilmoji.text((50, 195), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
-        pilmoji.text((50, 245), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
-
-        # Cột Bên Phải
-        pilmoji.text((450, 195), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
-        pilmoji.text((450, 245), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
+        # Hàng 2
+        pilmoji.text((50, 215), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
+        pilmoji.text((440, 215), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
 
     buffer = io.BytesIO()
     img.save(buffer, format="PNG", compress_level=1)
@@ -141,7 +167,6 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
 
 # ==================== HÀM VẼ BẢNG XẾP HẠNG ====================
 def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, author_info, author_avatar, guild_member_names, current_page, total_pages):
-    """Hàm vẽ ảnh Bảng Xếp Hạng thuần Sync (Chạy trên Thread riêng)"""
     card_height = 76
     card_gap = 10
     top_margin = 150
@@ -165,7 +190,6 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
     font_small = LOADED_FONTS.get("small")
 
     with Pilmoji(img) as pilmoji:
-        # 1. Khung Hạng Cá Nhân
         pilmoji.text((25, 12), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
         draw.rounded_rectangle([20, 50, width - 20, 130], radius=12, fill=card_color)
         img.paste(author_avatar, (35, 63), author_avatar)
@@ -179,7 +203,6 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
         pilmoji.text((105, 60), f"{rank_str}  •  {author_name[:22]}", fill=text_white, font=font_bold)
         pilmoji.text((105, 92), f"⚡ {format_points(a_points)} KiPoints   |   {author_streak_icon} Chuỗi: {a_streak} ngày", fill=text_sub, font=font_small)
 
-        # 2. Danh Sách Bảng Xếp Hạng
         y_pos = top_margin
         start_rank = (current_page - 1) * 10 + 1
 
@@ -188,15 +211,7 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
             streak = info.get("streak", 0)
             user_display = guild_member_names.get(str(user_id), f"User {user_id}")
 
-            if index == 1:
-                rank_color = accent_gold
-            elif index == 2:
-                rank_color = accent_silver
-            elif index == 3:
-                rank_color = accent_bronze
-            else:
-                rank_color = text_white
-
+            rank_color = accent_gold if index == 1 else (accent_silver if index == 2 else (accent_bronze if index == 3 else text_white))
             streak_icon = "🔥" if streak >= 3 else "🧊"
 
             draw.rounded_rectangle([20, y_pos, width - 20, y_pos + card_height], radius=12, fill=card_color)
@@ -342,7 +357,7 @@ class RankCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             await init_fonts_and_download(session)
 
-    # ==================== LỆNH PROFILE (ĐÃ CHUYỂN DẠNG THẺ ẢNH CANVAS) ====================
+    # ==================== LỆNH PROFILE MỚI ====================
     @commands.command(name="profile", aliases=["pf"])
     async def point(self, ctx, member: discord.Member = None):
         try:
@@ -352,27 +367,17 @@ class RankCog(commands.Cog):
             data = await load_data()
             user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
-            # Tính thứ hạng trên toàn máy chủ
             rank_str = "Chưa xếp hạng"
             if data:
                 sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
                 for idx, (uid, info) in enumerate(sorted_users, start=1):
                     if uid == user_id:
-                        if idx == 1:
-                            rank_str = "🥇 Top 1"
-                        elif idx == 2:
-                            rank_str = "🥈 Top 2"
-                        elif idx == 3:
-                            rank_str = "🥉 Top 3"
-                        else:
-                            rank_str = f"#{idx} / {len(sorted_users)}"
+                        rank_str = f"#{idx}"
                         break
 
-            # Tải avatar hình tròn kích thước lớn 110x110
             async with aiohttp.ClientSession() as session:
-                avatar_img = await fetch_circle_avatar(session, target.id, target.display_avatar.url, size=(110, 110))
+                avatar_img = await fetch_circle_avatar(session, target.id, target.display_avatar.url, size=(115, 115))
 
-            # Vẽ ảnh thẻ Profile trong thread riêng
             buffer = await asyncio.to_thread(
                 draw_profile_sync,
                 target_name=target.display_name,
@@ -382,15 +387,11 @@ class RankCog(commands.Cog):
             )
 
             file = discord.File(fp=buffer, filename="profile.png")
-            embed = discord.Embed(color=discord.Color.purple())
-            embed.set_image(url="attachment://profile.png")
-            embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-
-            await ctx.send(file=file, embed=embed)
+            await ctx.send(file=file)
         except Exception as e:
             await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `profile`: `{e}`")
 
-    # ==================== LỆNH TOP (BẢNG XẾP HẠNG) ====================
+    # ==================== LỆNH TOP ====================
     @commands.command(name="top", aliases=["t"])
     async def top(self, ctx, page: int = 1):
         try:
