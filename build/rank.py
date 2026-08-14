@@ -86,15 +86,16 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
     return Image.new("RGBA", size, (120, 120, 120, 255))
 
 
-# ==================== HÀM VẼ PROFILE MẪU MỚI ====================
+# ==================== HÀM VẼ PROFILE ĐẦY ĐỦ THÔNG TIN ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
-    """Vẽ thẻ Profile chính xác theo hình ảnh mẫu"""
+    """Vẽ thẻ Profile chính xác kèm Tên & Thứ hạng trên Banner"""
     width = 850
     height = 270
     bg_color = (30, 31, 34, 255)
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
     text_sub = (200, 205, 215, 255)
+    accent_gold = (255, 215, 0, 255)
 
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
@@ -140,7 +141,8 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     img.paste(outer_ring, (avatar_x - border_width, avatar_y - border_width), outer_ring)
     img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
 
-    # 4. Hiển thị Thông số bên dưới
+    # 4. Hiển thị Tên người dùng & Thứ hạng + Các thông số
+    font_title = LOADED_FONTS.get("title")
     font_bold = LOADED_FONTS.get("bold")
     font_small = LOADED_FONTS.get("small")
 
@@ -150,12 +152,24 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     last_date = user_info.get("last_date") or "Chưa điểm danh"
     streak_icon = "🔥" if streak >= 3 else "🧊"
 
+    text_x = 180  # Vị trí bên phải Avatar
+
     with Pilmoji(img) as pilmoji:
-        # Hàng 1
+        # A. TÊN & THỨ HẠNG (Nằm trên Banner, có Drop Shadow giúp đọc rõ trên mọi nền ảnh)
+        # Đổ bóng đen mờ bên dưới
+        pilmoji.text((text_x + 2, 47), target_name[:20], fill=(0, 0, 0, 230), font=font_title)
+        pilmoji.text((text_x + 2, 87), f"Thứ hạng: {rank_str}", fill=(0, 0, 0, 230), font=font_bold)
+
+        # Chữ chính phía trên
+        pilmoji.text((text_x, 45), target_name[:20], fill=text_white, font=font_title)
+        pilmoji.text((text_x, 85), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
+
+        # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
+        # Hàng 1: KiPoints & Streak
         pilmoji.text((50, 165), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
         pilmoji.text((440, 165), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
 
-        # Hàng 2
+        # Hàng 2: Nhiệm vụ & Lần cuối
         pilmoji.text((50, 215), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
         pilmoji.text((440, 215), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
 
@@ -357,7 +371,7 @@ class RankCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             await init_fonts_and_download(session)
 
-    # ==================== LỆNH PROFILE MỚI ====================
+    # ==================== LỆNH PROFILE ====================
     @commands.command(name="profile", aliases=["pf"])
     async def point(self, ctx, member: discord.Member = None):
         try:
@@ -367,12 +381,20 @@ class RankCog(commands.Cog):
             data = await load_data()
             user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
+            # Format chuỗi Thứ hạng giống mẫu cũ (#35 / 110)
             rank_str = "Chưa xếp hạng"
             if data:
                 sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
                 for idx, (uid, info) in enumerate(sorted_users, start=1):
                     if uid == user_id:
-                        rank_str = f"#{idx}"
+                        if idx == 1:
+                            rank_str = f"🥇 Top 1 / {len(sorted_users)}"
+                        elif idx == 2:
+                            rank_str = f"🥈 Top 2 / {len(sorted_users)}"
+                        elif idx == 3:
+                            rank_str = f"🥉 Top 3 / {len(sorted_users)}"
+                        else:
+                            rank_str = f"#{idx} / {len(sorted_users)}"
                         break
 
             async with aiohttp.ClientSession() as session:
@@ -422,4 +444,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
-    
+                
