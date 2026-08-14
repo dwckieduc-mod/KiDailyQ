@@ -8,8 +8,8 @@ from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
 from database import load_data, get_streak_text, format_points
 
-FONT_BOLD_PATH = "font.montserrat_bold.ttf"
-FONT_MEDIUM_PATH = "font.montserrat_medium.ttf"
+FONT_BOLD_PATH = "font/montserrat_bold.ttf"
+FONT_MEDIUM_PATH = "font/montserrat_medium.ttf"
 
 # --- BỘ NHỚ TẠM (CACHE) ---
 AVATAR_CACHE = {}
