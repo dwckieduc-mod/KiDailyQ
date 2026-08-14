@@ -53,11 +53,11 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
 
 
 async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
-    """Tải avatar và Cache vào RAM"""
+    """Tải avatar, cắt tròn và Cache vào RAM hỗ trợ đa kích thước"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
 
-    cache_key = (str(user_id), str(url))
+    cache_key = (str(user_id), str(url), size)
     if cache_key in AVATAR_CACHE:
         return AVATAR_CACHE[cache_key]
 
@@ -86,8 +86,62 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
     return Image.new("RGBA", size, (120, 120, 120, 255))
 
 
+# ==================== HÀM VẼ THẺ PROFILE CÁ NHÂN ====================
+def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
+    """Vẽ thẻ Profile đẹp mắt đồng bộ với bảng xếp hạng (Chạy trên Thread riêng)"""
+    width = 850
+    height = 310
+    bg_color = (30, 31, 34, 255)
+    card_color = (43, 45, 49, 255)
+    text_white = (255, 255, 255, 255)
+    text_sub = (200, 205, 215, 255)
+    accent_gold = (255, 215, 0, 255)
+
+    img = Image.new("RGBA", (width, height), bg_color)
+    draw = ImageDraw.Draw(img)
+
+    font_title = LOADED_FONTS.get("title")
+    font_bold = LOADED_FONTS.get("bold")
+    font_small = LOADED_FONTS.get("small")
+
+    # 1. Khung Thẻ Profile
+    draw.rounded_rectangle([20, 20, width - 20, height - 20], radius=16, fill=card_color)
+
+    # 2. Dán Avatar (Kích thước lớn 110x110)
+    img.paste(avatar_img, (45, 45), avatar_img)
+
+    with Pilmoji(img) as pilmoji:
+        # Header: Tên & Thứ Hạng
+        pilmoji.text((175, 45), target_name[:20], fill=text_white, font=font_title)
+        pilmoji.text((175, 85), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
+
+        # Đường kẻ phân cách
+        draw.line([(45, 175), (width - 45, 175)], fill=(60, 63, 68, 255), width=2)
+
+        # Lấy thông số người dùng
+        points = user_info.get("points", 0)
+        streak = user_info.get("streak", 0)
+        total_quests = user_info.get("total_quests", 0)
+        last_date = user_info.get("last_date") or "Chưa điểm danh"
+        streak_icon = "🔥" if streak >= 3 else "🧊"
+
+        # Cột Bên Trái
+        pilmoji.text((50, 195), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
+        pilmoji.text((50, 245), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
+
+        # Cột Bên Phải
+        pilmoji.text((450, 195), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
+        pilmoji.text((450, 245), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
+
+    buffer = io.BytesIO()
+    img.save(buffer, format="PNG", compress_level=1)
+    buffer.seek(0)
+    return buffer
+
+
+# ==================== HÀM VẼ BẢNG XẾP HẠNG ====================
 def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, author_info, author_avatar, guild_member_names, current_page, total_pages):
-    """Hàm vẽ ảnh thuần Sync (Chạy trên Thread riêng)"""
+    """Hàm vẽ ảnh Bảng Xếp Hạng thuần Sync (Chạy trên Thread riêng)"""
     card_height = 76
     card_gap = 10
     top_margin = 150
@@ -258,8 +312,6 @@ class LeaderboardView(discord.ui.View):
         self.current_page -= 1
         self.update_buttons()
         file, embed = await self.get_page_file_and_embed()
-        
-        # Cập nhật trực tiếp trong 1 request duy nhất
         await interaction.response.edit_message(attachments=[file], embed=embed, view=self)
 
     @discord.ui.button(label="Trang sau ▶", style=discord.ButtonStyle.primary)
@@ -270,8 +322,6 @@ class LeaderboardView(discord.ui.View):
         self.current_page += 1
         self.update_buttons()
         file, embed = await self.get_page_file_and_embed()
-        
-        # Cập nhật trực tiếp trong 1 request duy nhất
         await interaction.response.edit_message(attachments=[file], embed=embed, view=self)
 
     async def on_timeout(self):
@@ -292,6 +342,7 @@ class RankCog(commands.Cog):
         async with aiohttp.ClientSession() as session:
             await init_fonts_and_download(session)
 
+    # ==================== LỆNH PROFILE (ĐÃ CHUYỂN DẠNG THẺ ẢNH CANVAS) ====================
     @commands.command(name="profile", aliases=["pf"])
     async def point(self, ctx, member: discord.Member = None):
         try:
@@ -301,11 +352,7 @@ class RankCog(commands.Cog):
             data = await load_data()
             user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
-            points = user_info.get("points", 0)
-            streak = user_info.get("streak", 0)
-            total_quests = user_info.get("total_quests", 0)
-            last_date = user_info.get("last_date") or "Chưa điểm danh"
-
+            # Tính thứ hạng trên toàn máy chủ
             rank_str = "Chưa xếp hạng"
             if data:
                 sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
@@ -321,26 +368,29 @@ class RankCog(commands.Cog):
                             rank_str = f"#{idx} / {len(sorted_users)}"
                         break
 
-            embed = discord.Embed(
-                title="💳 HỒ SƠ NHIỆM VỤ CÁ NHÂN",
-                description=f"Bảng thống kê hoạt động của {target.mention}",
-                color=discord.Color.purple()
+            # Tải avatar hình tròn kích thước lớn 110x110
+            async with aiohttp.ClientSession() as session:
+                avatar_img = await fetch_circle_avatar(session, target.id, target.display_avatar.url, size=(110, 110))
+
+            # Vẽ ảnh thẻ Profile trong thread riêng
+            buffer = await asyncio.to_thread(
+                draw_profile_sync,
+                target_name=target.display_name,
+                user_info=user_info,
+                rank_str=rank_str,
+                avatar_img=avatar_img
             )
 
-            embed.set_thumbnail(url=target.display_avatar.url)
-            embed.set_author(name=target.display_name, icon_url=target.display_avatar.url)
-
-            embed.add_field(name="🏆 Thứ Hạng (Rank)", value=f"**{rank_str}**", inline=True)
-            embed.add_field(name="💪 Điểm Sức Mạnh", value=f"**{format_points(points)}** KiPoints", inline=True)
-            embed.add_field(name="🔥 Chuỗi Streak", value=f"**{get_streak_text(streak)}**", inline=True)
-            embed.add_field(name="🎯 Daily Quest Đã Làm", value=f"**{total_quests}** nhiệm vụ", inline=True)
-            embed.add_field(name="📅 Lần Cuối Điểm Danh", value=f"`{last_date}`", inline=True)
-
+            file = discord.File(fp=buffer, filename="profile.png")
+            embed = discord.Embed(color=discord.Color.purple())
+            embed.set_image(url="attachment://profile.png")
             embed.set_footer(text=f"Yêu cầu bởi {ctx.author.display_name}", icon_url=ctx.author.display_avatar.url)
-            await ctx.send(embed=embed)
+
+            await ctx.send(file=file, embed=embed)
         except Exception as e:
             await ctx.send(f"❌ Xảy ra lỗi khi thực thi lệnh `profile`: `{e}`")
 
+    # ==================== LỆNH TOP (BẢNG XẾP HẠNG) ====================
     @commands.command(name="top", aliases=["t"])
     async def top(self, ctx, page: int = 1):
         try:
