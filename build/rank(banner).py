@@ -91,7 +91,7 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
 
 # ==================== HÀM VẼ PROFILE ĐẦY ĐỦ THÔNG TIN ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
-    """Vẽ thẻ Profile tràn lề, không viền chữ và không viền Avatar"""
+    """Vẽ thẻ Profile tràn lề với Outline Cam Vàng Tối cho phần Hạng"""
     global LOADED_FONTS
 
     width = 820
@@ -99,7 +99,8 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
     text_sub = (200, 205, 215, 255)
-    accent_gold = (255, 215, 0, 255)
+    accent_gold = (255, 215, 0, 255)      # Màu chữ Hạng (Vàng tươi)
+    rank_outline = (200, 120, 0, 255)     # Màu viền Hạng (Cam vàng hơi tối)
 
     img = Image.new("RGBA", (width, height), card_color)
 
@@ -123,7 +124,7 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     draw_mb.rounded_rectangle([0, 0, width, banner_height + 20], radius=16, fill=255)
     img.paste(banner_img, (0, 0), mask_banner)
 
-    # 2. Avatar Hình Tròn (ĐÃ XOÁ HOÀN TOÀN VIỀN OUTER RING)
+    # 2. Avatar Hình Tròn
     avatar_size = 110
     avatar_x = 30
     avatar_y = 15
@@ -155,11 +156,19 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     text_x = 160  # Vị trí bên phải Avatar
 
     with Pilmoji(img) as pilmoji:
-        # A. TÊN & THỨ HẠNG
+        # A. TÊN
         pilmoji.text((text_x, 30), target_name[:20], fill=text_white, font=font_title)
-        pilmoji.text((text_x, 70), f"Hạng: {rank_str}", fill=accent_gold, font=font_bold)
 
-        # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
+        # B. THỨ HẠNG (Vẽ Outline Cam Vàng Tối 8 hướng xung quanh)
+        rank_text = f"Hạng: {rank_str}"
+        offsets = [(-2, 0), (2, 0), (0, -2), (0, 2), (-1, -1), (-1, 1), (1, -1), (1, 1)]
+        for dx, dy in offsets:
+            pilmoji.text((text_x + dx, 70 + dy), rank_text, fill=rank_outline, font=font_bold)
+        
+        # Chữ chính màu vàng nằm đè lên trên outline
+        pilmoji.text((text_x, 70), rank_text, fill=accent_gold, font=font_bold)
+
+        # C. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
         pilmoji.text((35, 150), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
         pilmoji.text((420, 150), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
 
