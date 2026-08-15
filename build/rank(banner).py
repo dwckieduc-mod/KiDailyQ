@@ -157,7 +157,7 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     with Pilmoji(img) as pilmoji:
         # A. TÊN & THỨ HẠNG
         pilmoji.text((text_x, 30), target_name[:20], fill=text_white, font=font_title)
-        pilmoji.text((text_x, 70), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
+        pilmoji.text((text_x, 70), f"Hạng: {rank_str}", fill=accent_gold, font=font_bold)
 
         # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
         pilmoji.text((35, 150), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
