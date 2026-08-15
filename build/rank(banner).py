@@ -20,7 +20,6 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
     """Tải và Nạp Font 1 LẦN DUY NHẤT vào RAM khi khởi động"""
     global LOADED_FONTS
 
-    # Tự động tạo thư mục 'font' nếu chưa tồn tại
     os.makedirs(os.path.dirname(FONT_BOLD_PATH), exist_ok=True)
 
     urls = {
@@ -57,7 +56,7 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
 
 
 async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
-    """Tải avatar, cắt tròn và Cache vào RAM (Cắt fit giữ đúng tỷ lệ không bị méo)"""
+    """Tải avatar, cắt tròn và Cache vào RAM"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
 
@@ -70,8 +69,6 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
             if resp.status == 200:
                 data = await resp.read()
                 avatar = Image.open(io.BytesIO(data)).convert("RGBA")
-                
-                # Fit avatar giữ nguyên tỷ lệ vuông
                 avatar = ImageOps.fit(avatar, size, method=Image.Resampling.LANCZOS)
 
                 mask = Image.new("L", size, 0)
@@ -94,26 +91,21 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
 
 # ==================== HÀM VẼ PROFILE ĐẦY ĐỦ THÔNG TIN ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
-    """Vẽ thẻ Profile chính xác kèm Tên & Thứ hạng trên Banner"""
+    """Vẽ thẻ Profile tràn lề (không khung ngoài) và không viền chữ"""
     global LOADED_FONTS
 
-    width = 850
-    height = 270
-    bg_color = (30, 31, 34, 255)
+    width = 820
+    height = 240
     card_color = (43, 45, 49, 255)
     text_white = (255, 255, 255, 255)
     text_sub = (200, 205, 215, 255)
     accent_gold = (255, 215, 0, 255)
 
-    img = Image.new("RGBA", (width, height), bg_color)
-    draw = ImageDraw.Draw(img)
+    img = Image.new("RGBA", (width, height), card_color)
 
-    # 1. Khung Thẻ Profile Chính (Bo góc)
-    draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=16, fill=card_color)
-
-    # 2. Load & Ghép Banner phía trên (Đã sửa: ImageOps.fit giúp cắt giữa ảnh, KHÔNG MÉO BANNER)
+    # 1. Load & Ghép Banner phía trên
     banner_height = 130
-    banner_size = (width - 30, banner_height)
+    banner_size = (width, banner_height)
     banner_path = "banner.png" if os.path.exists("banner.png") else "font/banner.png"
 
     if os.path.exists(banner_path):
@@ -125,21 +117,20 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     else:
         banner_img = Image.new("RGBA", banner_size, (70, 90, 120, 255))
 
-    # Bo góc trên cho Banner
+    # Mask bo góc trên cho Banner
     mask_banner = Image.new("L", banner_size, 0)
     draw_mb = ImageDraw.Draw(mask_banner)
-    draw_mb.rounded_rectangle([0, 0, banner_size[0], banner_size[1] + 20], radius=16, fill=255)
-    img.paste(banner_img, (15, 15), mask_banner)
+    draw_mb.rounded_rectangle([0, 0, width, banner_height + 20], radius=16, fill=255)
+    img.paste(banner_img, (0, 0), mask_banner)
 
-    # 3. Avatar Hình Tròn Có Viền Đen Chèn Đè
-    avatar_size = 115
-    border_width = 6
-    avatar_x = 45
-    avatar_y = 35
+    # 2. Avatar Hình Tròn
+    avatar_size = 110
+    border_width = 5
+    avatar_x = 30
+    avatar_y = 15
 
     avatar_img = ImageOps.fit(avatar_img, (avatar_size, avatar_size), method=Image.Resampling.LANCZOS)
 
-    # Viền màu đen đậm bao ngoài Avatar
     outer_size = avatar_size + (border_width * 2)
     outer_ring = Image.new("RGBA", (outer_size, outer_size), (0, 0, 0, 0))
     draw_ring = ImageDraw.Draw(outer_ring)
@@ -169,30 +160,30 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     last_date = user_info.get("last_date") or "Chưa điểm danh"
     streak_icon = "🔥" if streak >= 3 else "🧊"
 
-    text_x = 180  # Vị trí bên phải Avatar
+    text_x = 160  # Vị trí bên phải Avatar
 
     with Pilmoji(img) as pilmoji:
-        # A. TÊN & THỨ HẠNG (Nằm trên Banner, bóng đen 8 hướng sắc nét)
-        shadow_color = (0, 0, 0, 240)
-        shadow_offsets = [(-2, -2), (-2, 2), (2, -2), (2, 2), (0, -2), (0, 2), (-2, 0), (2, 0)]
-
-        for dx, dy in shadow_offsets:
-            pilmoji.text((text_x + dx, 45 + dy), target_name[:20], fill=shadow_color, font=font_title)
-            pilmoji.text((text_x + dx, 85 + dy), f"Thứ hạng: {rank_str}", fill=shadow_color, font=font_bold)
-
-        # Chữ chính phía trên
-        pilmoji.text((text_x, 45), target_name[:20], fill=text_white, font=font_title)
-        pilmoji.text((text_x, 85), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
+        # A. TÊN & THỨ HẠNG (Chữ sạch, đã xóa viền bóng đen)
+        pilmoji.text((text_x, 30), target_name[:20], fill=text_white, font=font_title)
+        pilmoji.text((text_x, 70), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
 
         # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
-        pilmoji.text((50, 165), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
-        pilmoji.text((440, 165), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
+        pilmoji.text((35, 150), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
+        pilmoji.text((420, 150), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
 
-        pilmoji.text((50, 215), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
-        pilmoji.text((440, 215), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
+        pilmoji.text((35, 195), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
+        pilmoji.text((420, 195), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
+
+    # Bo tròn góc toàn bộ ảnh thẻ Profile
+    mask_card = Image.new("L", (width, height), 0)
+    draw_mc = ImageDraw.Draw(mask_card)
+    draw_mc.rounded_rectangle([0, 0, width, height], radius=16, fill=255)
+
+    final_img = Image.new("RGBA", (width, height), (0, 0, 0, 0))
+    final_img.paste(img, (0, 0), mask_card)
 
     buffer = io.BytesIO()
-    img.save(buffer, format="PNG", compress_level=1)
+    final_img.save(buffer, format="PNG", compress_level=1)
     buffer.seek(0)
     return buffer
 
@@ -420,7 +411,7 @@ class RankCog(commands.Cog):
                         break
 
             async with aiohttp.ClientSession() as session:
-                avatar_img = await fetch_circle_avatar(session, target.id, target.display_avatar.url, size=(115, 115))
+                avatar_img = await fetch_circle_avatar(session, target.id, target.display_avatar.url, size=(110, 110))
 
             buffer = await asyncio.to_thread(
                 draw_profile_sync,
@@ -466,4 +457,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
-    
+                
