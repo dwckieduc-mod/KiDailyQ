@@ -4,7 +4,7 @@ import asyncio
 import aiohttp
 import discord
 from discord.ext import commands
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 from pilmoji import Pilmoji
 from database import load_data, get_streak_text, format_points
 
@@ -19,6 +19,10 @@ LOADED_FONTS = {}
 async def init_fonts_and_download(session: aiohttp.ClientSession):
     """Tải và Nạp Font 1 LẦN DUY NHẤT vào RAM khi khởi động"""
     global LOADED_FONTS
+
+    # Tự động tạo thư mục 'font' nếu chưa tồn tại
+    os.makedirs(os.path.dirname(FONT_BOLD_PATH), exist_ok=True)
+
     urls = {
         FONT_BOLD_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Bold.ttf",
         FONT_MEDIUM_PATH: "https://raw.githubusercontent.com/google/fonts/main/ofl/montserrat/static/Montserrat-Medium.ttf"
@@ -53,7 +57,7 @@ async def init_fonts_and_download(session: aiohttp.ClientSession):
 
 
 async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
-    """Tải avatar, cắt tròn và Cache vào RAM"""
+    """Tải avatar, cắt tròn và Cache vào RAM (Cắt fit giữ đúng tỷ lệ không bị méo)"""
     if not url:
         return Image.new("RGBA", size, (100, 100, 100, 255))
 
@@ -66,7 +70,9 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
             if resp.status == 200:
                 data = await resp.read()
                 avatar = Image.open(io.BytesIO(data)).convert("RGBA")
-                avatar = avatar.resize(size, Image.Resampling.LANCZOS)
+                
+                # Fit avatar giữ nguyên tỷ lệ vuông
+                avatar = ImageOps.fit(avatar, size, method=Image.Resampling.LANCZOS)
 
                 mask = Image.new("L", size, 0)
                 draw = ImageDraw.Draw(mask)
@@ -89,6 +95,8 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
 # ==================== HÀM VẼ PROFILE ĐẦY ĐỦ THÔNG TIN ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     """Vẽ thẻ Profile chính xác kèm Tên & Thứ hạng trên Banner"""
+    global LOADED_FONTS
+
     width = 850
     height = 270
     bg_color = (30, 31, 34, 255)
@@ -103,25 +111,24 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     # 1. Khung Thẻ Profile Chính (Bo góc)
     draw.rounded_rectangle([15, 15, width - 15, height - 15], radius=16, fill=card_color)
 
-    # 2. Load & Ghép Banner phía trên
+    # 2. Load & Ghép Banner phía trên (Đã sửa: ImageOps.fit giúp cắt giữa ảnh, KHÔNG MÉO BANNER)
     banner_height = 130
-    banner_path = "banner.png"
-    if not os.path.exists(banner_path):
-        banner_path = "font/banner.png"
+    banner_size = (width - 30, banner_height)
+    banner_path = "banner.png" if os.path.exists("banner.png") else "font/banner.png"
 
     if os.path.exists(banner_path):
         try:
-            banner_img = Image.open(banner_path).convert("RGBA")
-            banner_img = banner_img.resize((width - 30, banner_height), Image.Resampling.LANCZOS)
+            raw_banner = Image.open(banner_path).convert("RGBA")
+            banner_img = ImageOps.fit(raw_banner, banner_size, method=Image.Resampling.LANCZOS, centering=(0.5, 0.5))
         except Exception:
-            banner_img = Image.new("RGBA", (width - 30, banner_height), (70, 90, 120, 255))
+            banner_img = Image.new("RGBA", banner_size, (70, 90, 120, 255))
     else:
-        banner_img = Image.new("RGBA", (width - 30, banner_height), (70, 90, 120, 255))
+        banner_img = Image.new("RGBA", banner_size, (70, 90, 120, 255))
 
     # Bo góc trên cho Banner
-    mask_banner = Image.new("L", (width - 30, banner_height), 0)
+    mask_banner = Image.new("L", banner_size, 0)
     draw_mb = ImageDraw.Draw(mask_banner)
-    draw_mb.rounded_rectangle([0, 0, width - 30, banner_height + 20], radius=16, fill=255)
+    draw_mb.rounded_rectangle([0, 0, banner_size[0], banner_size[1] + 20], radius=16, fill=255)
     img.paste(banner_img, (15, 15), mask_banner)
 
     # 3. Avatar Hình Tròn Có Viền Đen Chèn Đè
@@ -130,7 +137,7 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     avatar_x = 45
     avatar_y = 35
 
-    avatar_img = avatar_img.resize((avatar_size, avatar_size), Image.Resampling.LANCZOS)
+    avatar_img = ImageOps.fit(avatar_img, (avatar_size, avatar_size), method=Image.Resampling.LANCZOS)
 
     # Viền màu đen đậm bao ngoài Avatar
     outer_size = avatar_size + (border_width * 2)
@@ -141,10 +148,20 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     img.paste(outer_ring, (avatar_x - border_width, avatar_y - border_width), outer_ring)
     img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
 
-    # 4. Hiển thị Tên người dùng & Thứ hạng + Các thông số
-    font_title = LOADED_FONTS.get("title")
-    font_bold = LOADED_FONTS.get("bold")
-    font_small = LOADED_FONTS.get("small")
+    # Đảm bảo font sẵn sàng
+    if not LOADED_FONTS.get("title") and os.path.exists(FONT_BOLD_PATH):
+        try:
+            LOADED_FONTS["title"] = ImageFont.truetype(FONT_BOLD_PATH, 26)
+            LOADED_FONTS["bold"] = ImageFont.truetype(FONT_BOLD_PATH, 22)
+            LOADED_FONTS["small"] = ImageFont.truetype(
+                FONT_MEDIUM_PATH if os.path.exists(FONT_MEDIUM_PATH) else FONT_BOLD_PATH, 19
+            )
+        except Exception:
+            pass
+
+    font_title = LOADED_FONTS.get("title", ImageFont.load_default())
+    font_bold = LOADED_FONTS.get("bold", ImageFont.load_default())
+    font_small = LOADED_FONTS.get("small", ImageFont.load_default())
 
     points = user_info.get("points", 0)
     streak = user_info.get("streak", 0)
@@ -155,21 +172,22 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     text_x = 180  # Vị trí bên phải Avatar
 
     with Pilmoji(img) as pilmoji:
-        # A. TÊN & THỨ HẠNG (Nằm trên Banner, có Drop Shadow giúp đọc rõ trên mọi nền ảnh)
-        # Đổ bóng đen mờ bên dưới
-        pilmoji.text((text_x + 2, 47), target_name[:20], fill=(0, 0, 0, 230), font=font_title)
-        pilmoji.text((text_x + 2, 87), f"Thứ hạng: {rank_str}", fill=(0, 0, 0, 230), font=font_bold)
+        # A. TÊN & THỨ HẠNG (Nằm trên Banner, bóng đen 8 hướng sắc nét)
+        shadow_color = (0, 0, 0, 240)
+        shadow_offsets = [(-2, -2), (-2, 2), (2, -2), (2, 2), (0, -2), (0, 2), (-2, 0), (2, 0)]
+
+        for dx, dy in shadow_offsets:
+            pilmoji.text((text_x + dx, 45 + dy), target_name[:20], fill=shadow_color, font=font_title)
+            pilmoji.text((text_x + dx, 85 + dy), f"Thứ hạng: {rank_str}", fill=shadow_color, font=font_bold)
 
         # Chữ chính phía trên
         pilmoji.text((text_x, 45), target_name[:20], fill=text_white, font=font_title)
         pilmoji.text((text_x, 85), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
 
         # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
-        # Hàng 1: KiPoints & Streak
         pilmoji.text((50, 165), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
         pilmoji.text((440, 165), f"{streak_icon} Chuỗi Streak: {streak} ngày", fill=text_white, font=font_bold)
 
-        # Hàng 2: Nhiệm vụ & Lần cuối
         pilmoji.text((50, 215), f"🎯 Nhiệm vụ hoàn thành: {total_quests}", fill=text_sub, font=font_small)
         pilmoji.text((440, 215), f"📅 Lần cuối: {last_date}", fill=text_sub, font=font_small)
 
@@ -199,9 +217,9 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
     img = Image.new("RGBA", (width, height), bg_color)
     draw = ImageDraw.Draw(img)
 
-    font_title = LOADED_FONTS.get("title")
-    font_bold = LOADED_FONTS.get("bold")
-    font_small = LOADED_FONTS.get("small")
+    font_title = LOADED_FONTS.get("title", ImageFont.load_default())
+    font_bold = LOADED_FONTS.get("bold", ImageFont.load_default())
+    font_small = LOADED_FONTS.get("small", ImageFont.load_default())
 
     with Pilmoji(img) as pilmoji:
         pilmoji.text((25, 12), "📌 HẠNG HIỆN TẠI CỦA BẠN", fill=accent_gold, font=font_title)
@@ -238,8 +256,12 @@ def draw_leaderboard_sync(page_data, page_avatars, author_id, author_rank_idx, a
             pilmoji.text((width - 150, y_pos + 25), streak_str, fill=text_sub, font=font_small)
 
             points_str = f"{format_points(points)} KiPoints"
-            bbox = font_bold.getbbox(points_str)
-            text_width = bbox[2] - bbox[0]
+            try:
+                bbox = font_bold.getbbox(points_str)
+                text_width = bbox[2] - bbox[0]
+            except Exception:
+                text_width = 120
+
             points_x = (width - 170) - text_width
 
             pilmoji.text((points_x, y_pos + 24), points_str, fill=accent_gold, font=font_bold)
@@ -381,7 +403,7 @@ class RankCog(commands.Cog):
             data = await load_data()
             user_info = data.get(user_id, {"points": 0, "last_date": "", "streak": 0, "total_quests": 0})
 
-            # Format chuỗi Thứ hạng giống mẫu cũ (#35 / 110)
+            # Format chuỗi Thứ hạng (#35 / 110)
             rank_str = "Chưa xếp hạng"
             if data:
                 sorted_users = sorted(data.items(), key=lambda item: item[1].get("points", 0), reverse=True)
@@ -444,4 +466,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
-                
+    
