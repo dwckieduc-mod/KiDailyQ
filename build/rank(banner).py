@@ -91,7 +91,7 @@ async def fetch_circle_avatar(session, user_id, url, size=(54, 54)):
 
 # ==================== HÀM VẼ PROFILE ĐẦY ĐỦ THÔNG TIN ====================
 def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
-    """Vẽ thẻ Profile tràn lề (không khung ngoài) và không viền chữ"""
+    """Vẽ thẻ Profile tràn lề, không viền chữ và không viền Avatar"""
     global LOADED_FONTS
 
     width = 820
@@ -123,20 +123,12 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     draw_mb.rounded_rectangle([0, 0, width, banner_height + 20], radius=16, fill=255)
     img.paste(banner_img, (0, 0), mask_banner)
 
-    # 2. Avatar Hình Tròn
+    # 2. Avatar Hình Tròn (ĐÃ XOÁ HOÀN TOÀN VIỀN OUTER RING)
     avatar_size = 110
-    border_width = 5
     avatar_x = 30
     avatar_y = 15
 
     avatar_img = ImageOps.fit(avatar_img, (avatar_size, avatar_size), method=Image.Resampling.LANCZOS)
-
-    outer_size = avatar_size + (border_width * 2)
-    outer_ring = Image.new("RGBA", (outer_size, outer_size), (0, 0, 0, 0))
-    draw_ring = ImageDraw.Draw(outer_ring)
-    draw_ring.ellipse((0, 0, outer_size - 1, outer_size - 1), fill=(24, 25, 28, 255))
-
-    img.paste(outer_ring, (avatar_x - border_width, avatar_y - border_width), outer_ring)
     img.paste(avatar_img, (avatar_x, avatar_y), avatar_img)
 
     # Đảm bảo font sẵn sàng
@@ -163,9 +155,9 @@ def draw_profile_sync(target_name, user_info, rank_str, avatar_img):
     text_x = 160  # Vị trí bên phải Avatar
 
     with Pilmoji(img) as pilmoji:
-        # A. TÊN & THỨ HẠNG (Chữ sạch, đã xóa viền bóng đen)
+        # A. TÊN & THỨ HẠNG
         pilmoji.text((text_x, 30), target_name[:20], fill=text_white, font=font_title)
-        pilmoji.text((text_x, 70), f"Hạng: {rank_str}", fill=accent_gold, font=font_bold)
+        pilmoji.text((text_x, 70), f"Thứ hạng: {rank_str}", fill=accent_gold, font=font_bold)
 
         # B. THÔNG SỐ ĐIỂM DANH (Hàng dưới)
         pilmoji.text((35, 150), f"⚡ KiPoints: {format_points(points)}", fill=text_white, font=font_bold)
@@ -457,4 +449,4 @@ class RankCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(RankCog(bot))
-                
+    
