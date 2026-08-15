@@ -401,13 +401,13 @@ class RankCog(commands.Cog):
                 for idx, (uid, info) in enumerate(sorted_users, start=1):
                     if uid == user_id:
                         if idx == 1:
-                            rank_str = f"🥇 Top 1 / {len(sorted_users)}"
+                            rank_str = f"🥇 Top 1"
                         elif idx == 2:
-                            rank_str = f"🥈 Top 2 / {len(sorted_users)}"
+                            rank_str = f"🥈 Top 2"
                         elif idx == 3:
-                            rank_str = f"🥉 Top 3 / {len(sorted_users)}"
+                            rank_str = f"🥉 Top 3"
                         else:
-                            rank_str = f"#{idx} / {len(sorted_users)}"
+                            rank_str = f"#{idx}"
                         break
 
             async with aiohttp.ClientSession() as session:
