@@ -27,6 +27,16 @@ class AdminCog(commands.Cog):
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
         await ctx.send(embed=embed)
 
+        # GHI LOG CỘNG ĐIỂM
+        log_cog = self.bot.get_cog("LogCog")
+        if log_cog:
+            await log_cog.log_add_points(
+                target_id=member.id,
+                points=amount,
+                actor=ctx.author,
+                reason="Lệnh k.add từ Admin"
+            )
+
     @add_diem.error
     async def add_diem_error(self, ctx, error):
         if isinstance(error, commands.MissingPermissions):
@@ -135,7 +145,6 @@ class AdminCog(commands.Cog):
             embed = discord.Embed(title="❌ LỖI HỆ THỐNG", description=f"`{error}`", color=discord.Color.red())
         await ctx.send(embed=embed)
 
-    # ==================== LỆNH RESET (BỔ SUNG OPTIONS: ALL & ALL_STREAK) ====================
     @commands.command(name="reset", aliases=["rs"])
     @commands.has_permissions(administrator=True)
     async def reset_user(self, ctx, target: str = None):
@@ -156,7 +165,6 @@ class AdminCog(commands.Cog):
         data = await load_data()
         target_clean = target.lower()
 
-        # TRƯỜNG HỢP 1: Reset toàn bộ hệ thống
         if target_clean == "all":
             if not data:
                 embed = discord.Embed(title="📋 KHÔNG CÓ DỮ LIỆU", description="Hệ thống hiện tại chưa có dữ liệu nào để reset!", color=discord.Color.gold())
@@ -171,7 +179,6 @@ class AdminCog(commands.Cog):
             embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
             return await ctx.send(embed=embed)
 
-        # TRƯỜNG HỢP 2: Reset chuỗi streak của tất cả mọi người
         if target_clean == "all_streak":
             if not data:
                 embed = discord.Embed(title="📋 KHÔNG CÓ DỮ LIỆU", description="Hệ thống hiện tại chưa có dữ liệu nào để reset streak!", color=discord.Color.gold())
@@ -189,7 +196,6 @@ class AdminCog(commands.Cog):
             embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
             return await ctx.send(embed=embed)
 
-        # TRƯỜNG HỢP 3: Reset 1 thành viên cụ thể
         try:
             member = await commands.MemberConverter().convert(ctx, target)
             user_id = str(member.id)
@@ -261,8 +267,6 @@ class AdminCog(commands.Cog):
         user_info["total_quests"] = max(0, user_info.get("total_quests", 0) - 1)
         user_info["streak"] = restored_streak
         user_info["last_date"] = str(yesterday)
-        
-        # Trừ lượt điểm danh ngày hôm nay (Tối thiểu là 0)
         user_info["checkin_today"] = max(0, user_info.get("checkin_today", 0) - 1)
 
         data[user_id] = user_info
@@ -277,8 +281,16 @@ class AdminCog(commands.Cog):
         embed.add_field(name="💰 KiPoints Còn Lại", value=f"**{format_points(user_info['points'])}** KiPoints", inline=True)
         embed.add_field(name="🔥 Streak Khôi Phục", value=f"**{get_streak_text(restored_streak)}**", inline=True)
         embed.set_footer(text=f"Thực hiện bởi Admin: {ctx.author.display_name}")
-        
         await ctx.send(embed=embed)
+
+        # GHI LOG DENY (LỆNH)
+        log_cog = self.bot.get_cog("LogCog")
+        if log_cog:
+            await log_cog.log_deny(
+                target_id=member.id,
+                actor=ctx.author,
+                reason="Hoàn trả lượt điểm danh (Lệnh k.deny)"
+            )
 
     @refund_user.error
     async def refund_user_error(self, ctx, error):
@@ -292,4 +304,4 @@ class AdminCog(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(AdminCog(bot))
-                
+                                
