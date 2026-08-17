@@ -3,8 +3,10 @@ from discord.ext import commands
 from datetime import datetime
 
 # ==================== CẤU HÌNH ID ====================
-MAIN_GUILD_ID = 123456789012345678  # Thay ID của Server chính (nơi chứa thành viên)
-LOG_CHANNEL_ID = 987654321098765432 # Thay ID của Kênh Log (nằm ở server riêng)
+MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
+# Thay ID của Server chính (nơi chứa thành viên)
+LOG_CHANNEL_ID = os.environ.get("LOG_CHANNEL_ID")
+# Thay ID của Kênh Log (nằm ở server riêng)
 
 
 class LogCog(commands.Cog):
