@@ -48,6 +48,7 @@ async def main():
         await bot.load_extension("build.member")
         await bot.load_extension("build.rank(banner)")
         await bot.load_extension("build.admin")
+        await bot.load_extension("build.log")
         await bot.start(BOT_TOKEN)
 
 if __name__ == "__main__":
