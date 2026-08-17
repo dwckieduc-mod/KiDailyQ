@@ -4,10 +4,7 @@ from datetime import datetime
 
 # ==================== CẤU HÌNH ID ====================
 MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
-# Thay ID của Server chính (nơi chứa thành viên)
 LOG_CHANNEL_ID = os.environ.get("LOG_CHANNEL_ID")
-# Thay ID của Kênh Log (nằm ở server riêng)
-
 
 class LogCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
