@@ -1,10 +1,16 @@
+import os
 import discord
 from discord.ext import commands
-from datetime import datetime
+from datetime import datetime, timezone
 
-# ==================== CẤU HÌNH ID ====================
-MAIN_GUILD_ID = os.environ.get("MAIN_GUILD_ID")
-LOG_CHANNEL_ID = os.environ.get("LOG_CHANNEL_ID")
+# ==================== CẤU HÌNH ID (Chuyển sang dạng int) ====================
+try:
+    MAIN_GUILD_ID = int(os.environ.get("MAIN_GUILD_ID", 0))
+    LOG_CHANNEL_ID = int(os.environ.get("LOG_CHANNEL_ID", 0))
+except ValueError:
+    MAIN_GUILD_ID = 0
+    LOG_CHANNEL_ID = 0
+
 
 class LogCog(commands.Cog):
     def __init__(self, bot: commands.Bot):
@@ -12,16 +18,17 @@ class LogCog(commands.Cog):
 
     async def _get_display_name(self, user_id: int) -> str:
         """Lấy tên hiển thị của user tại Server chính (fallback về tên global hoặc ID nếu không tìm thấy)"""
-        main_guild = self.bot.get_guild(MAIN_GUILD_ID)
-        if main_guild:
-            member = main_guild.get_member(user_id)
-            if not member:
-                try:
-                    member = await main_guild.fetch_member(user_id)
-                except Exception:
-                    pass
-            if member:
-                return f"{member.display_name} ({member.name})"
+        if MAIN_GUILD_ID:
+            main_guild = self.bot.get_guild(MAIN_GUILD_ID)
+            if main_guild:
+                member = main_guild.get_member(user_id)
+                if not member:
+                    try:
+                        member = await main_guild.fetch_member(user_id)
+                    except Exception:
+                        pass
+                if member:
+                    return f"{member.display_name} ({member.name})"
 
         # Nếu không thấy trong server chính, fetch user toàn cục
         user = self.bot.get_user(user_id)
@@ -34,6 +41,10 @@ class LogCog(commands.Cog):
 
     async def _send_to_log(self, embed: discord.Embed):
         """Hàm phụ gửi Embed tới kênh Log ở server riêng"""
+        if not LOG_CHANNEL_ID:
+            print("[LOG ERROR] LOG_CHANNEL_ID chưa được cấu hình hợp lệ trong biến môi trường.")
+            return
+
         try:
             channel = self.bot.get_channel(LOG_CHANNEL_ID)
             if not channel:
@@ -59,7 +70,7 @@ class LogCog(commands.Cog):
         embed = discord.Embed(
             title=f"Lịch Sử Kênh: {action_text}",
             color=discord.Color.gold(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="📌 Kênh", value=f"{channel.mention} (`{channel.name}`)", inline=False)
         embed.add_field(name="🛠 Thao tác bởi", value=f"{actor_name} [{actor_type}]", inline=True)
@@ -84,7 +95,7 @@ class LogCog(commands.Cog):
         embed = discord.Embed(
             title="⚡ Lịch Sử Cộng Điểm",
             color=discord.Color.green(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="👤 Người nhận", value=target_name, inline=True)
         embed.add_field(name="➕ Điểm cộng", value=f"`+{points}` KiPoints", inline=True)
@@ -105,7 +116,7 @@ class LogCog(commands.Cog):
         embed = discord.Embed(
             title="🚫 Lịch Sử Từ Chối (Deny)",
             color=discord.Color.red(),
-            timestamp=datetime.utcnow()
+            timestamp=datetime.now(timezone.utc)
         )
         embed.add_field(name="👤 Đối tượng bị Deny", value=target_name, inline=True)
         embed.add_field(name="👑 Người thực hiện Deny", value=actor_name, inline=True)
@@ -117,3 +128,4 @@ class LogCog(commands.Cog):
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(LogCog(bot))
+            
